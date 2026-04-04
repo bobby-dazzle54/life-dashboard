@@ -1,74 +1,96 @@
 import { useState, useMemo, useEffect } from "react";
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import { fetchAllData, isConfigured, SHEET_ID } from "./sheets.js";
 
 // âââ colour palette âââ
-const COLORS = {
+const C = {
   work: "#3B82F6",
   diet: "#10B981",
   family: "#F59E0B",
   personal: "#8B5CF6",
-  bg: "#0F172A",
-  card: "#1E293B",
-  cardAlt: "#334155",
+  bg: "#0B1120",
+  card: "rgba(15,23,42,0.7)",
+  cardSolid: "#0F172A",
+  glass: "rgba(30,41,59,0.5)",
   accent: "#38BDF8",
   text: "#F1F5F9",
   muted: "#94A3B8",
+  mutedLight: "#CBD5E1",
   success: "#22C55E",
   danger: "#EF4444",
+  orange: "#F97316",
+  purple: "#A855F7",
+  border: "rgba(255,255,255,0.07)",
+  borderLight: "rgba(255,255,255,0.12)",
+  glow: "0 0 40px rgba(56,189,248,0.08)",
 };
 
-const PIE_COLORS = [COLORS.work, COLORS.diet, COLORS.family, COLORS.personal];
+const PIE_COLORS = [C.work, C.diet, C.family, C.personal];
+
+// âââ global styles injected once âââ
+const GLOBAL_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: ${C.bg};
+    color: ${C.text};
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: ${C.bg}; }
+  ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.2); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.3); }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+`;
 
 // âââ initial data âââ
 const INITIAL_WEIGHT = {
-  start: 268,
-  current: 243,
-  goal: 210,
-  unit: "lbs",
+  start: 268, current: 243, goal: 210, unit: "lbs",
   history: [
-    { date: "Jan", weight: 268 },
-    { date: "Feb", weight: 261 },
-    { date: "Mar", weight: 253 },
-    { date: "Apr", weight: 243 },
+    { date: "Jan", weight: 268 }, { date: "Feb", weight: 261 },
+    { date: "Mar", weight: 253 }, { date: "Apr", weight: 243 },
   ],
 };
 
 const INITIAL_FITNESS_GOALS = [
-  { id: 1, name: "Press-ups", icon: "ðª", start: 8, current: 8, goal: 50, unit: "reps", doneToday: false },
-  { id: 2, name: "Cycling", icon: "ð´", start: 8, current: 8, goal: 30, unit: "miles", doneToday: false },
-  { id: 3, name: "Running", icon: "ð", start: 8, current: 8, goal: 30, unit: "mins", doneToday: false },
-  { id: 4, name: "Weight Lifting", icon: "ðï¸", start: 25, current: 70, goal: 120, unit: "kg", doneToday: false },
-  { id: 5, name: "Rowing", icon: "ð£", start: 1000, current: 8000, goal: 20000, unit: "m", doneToday: false },
+  { id: 1, name: "Press-ups", icon: "\u{1F4AA}", start: 8, current: 8, goal: 50, unit: "reps", doneToday: false },
+  { id: 2, name: "Cycling", icon: "\u{1F6B4}", start: 8, current: 8, goal: 30, unit: "miles", doneToday: false },
+  { id: 3, name: "Running", icon: "\u{1F3C3}", start: 8, current: 8, goal: 30, unit: "mins", doneToday: false },
+  { id: 4, name: "Weight Lifting", icon: "\u{1F3CB}\uFE0F", start: 25, current: 70, goal: 120, unit: "kg", doneToday: false },
+  { id: 5, name: "Rowing", icon: "\u{1F6A3}", start: 1000, current: 8000, goal: 20000, unit: "m", doneToday: false },
 ];
 
 const INITIAL_DEBTS = [
-  { id: 2, name: "American Express BA", icon: "âï¸", used: 8100, limit: 9000 },
-  { id: 5, name: "MBNA", icon: "ð³", used: 8000, limit: 25000 },
-  { id: 1, name: "American Express Gold", icon: "ð³", used: 6100, limit: 6900 },
-  { id: 3, name: "Barclaycard", icon: "ð³", used: 3900, limit: 4000 },
-  { id: 4, name: "Natwest Credit Card", icon: "ð¦", used: 0, limit: 3500 },
+  { id: 2, name: "American Express BA", icon: "\u2708\uFE0F", used: 8100, limit: 9000 },
+  { id: 5, name: "MBNA", icon: "\u{1F4B3}", used: 8000, limit: 25000 },
+  { id: 1, name: "American Express Gold", icon: "\u{1F4B3}", used: 6100, limit: 6900 },
+  { id: 3, name: "Barclaycard", icon: "\u{1F4B3}", used: 3900, limit: 4000 },
+  { id: 4, name: "Natwest Credit Card", icon: "\u{1F3E6}", used: 0, limit: 3500 },
 ];
 
 const INITIAL_TASKS = [
-  // Work
   { id: 1, category: "work", text: "Finish Q2 project proposal", done: false },
   { id: 2, category: "work", text: "Review team pull requests", done: false },
   { id: 3, category: "work", text: "Update client invoices", done: true },
   { id: 4, category: "work", text: "Prepare Monday standup notes", done: false },
   { id: 5, category: "work", text: "Complete compliance training", done: false },
-  // Diet
   { id: 6, category: "diet", text: "Meal prep for the week", done: false },
   { id: 7, category: "diet", text: "Hit daily protein target (150g)", done: false },
   { id: 8, category: "diet", text: "Drink 3 litres of water", done: true },
   { id: 9, category: "diet", text: "No snacking after 8pm", done: false },
   { id: 10, category: "diet", text: "Log all meals in tracker", done: false },
-  // Family
   { id: 11, category: "family", text: "Plan weekend day out", done: false },
   { id: 12, category: "family", text: "Call parents", done: true },
   { id: 13, category: "family", text: "Organise family photos", done: false },
   { id: 14, category: "family", text: "Help kids with homework", done: false },
-  // Personal
   { id: 15, category: "personal", text: "Read 30 pages of current book", done: false },
   { id: 16, category: "personal", text: "Tidy the garage", done: false },
   { id: 17, category: "personal", text: "Learn a new recipe", done: true },
@@ -77,22 +99,24 @@ const INITIAL_TASKS = [
 
 // âââ helper components âââ
 
-function ProgressBar({ value, max, color, height = 12, showLabel = true }) {
-  const pct = Math.min(100, Math.max(0, ((value) / max) * 100));
+function ProgressBar({ value, max, color, height = 10, showLabel = true, animated = false }) {
+  const pct = Math.min(100, Math.max(0, (value / max) * 100));
   return (
     <div style={{ width: "100%" }}>
       <div style={{
-        width: "100%", height, borderRadius: height, background: "rgba(255,255,255,0.08)",
-        overflow: "hidden", position: "relative",
+        width: "100%", height, borderRadius: 99,
+        background: "rgba(255,255,255,0.06)", overflow: "hidden",
       }}>
         <div style={{
-          width: `${pct}%`, height: "100%", borderRadius: height,
-          background: `linear-gradient(90deg, ${color}, ${color}cc)`,
-          transition: "width 0.5s ease",
+          width: `${pct}%`, height: "100%", borderRadius: 99,
+          background: `linear-gradient(90deg, ${color}cc, ${color})`,
+          transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+          boxShadow: `0 0 12px ${color}40`,
+          ...(animated ? { animation: "shimmer 2s ease-in-out infinite", backgroundSize: "200% 100%" } : {}),
         }} />
       </div>
       {showLabel && (
-        <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 4, textAlign: "right" }}>
+        <div style={{ fontSize: 11, color: C.muted, marginTop: 3, textAlign: "right", fontWeight: 500 }}>
           {Math.round(pct)}%
         </div>
       )}
@@ -100,12 +124,18 @@ function ProgressBar({ value, max, color, height = 12, showLabel = true }) {
   );
 }
 
-function Card({ children, style }) {
+function Card({ children, style, hover = true, glow = false }) {
   return (
     <div style={{
-      background: COLORS.card, borderRadius: 16, padding: 24,
-      border: "1px solid rgba(255,255,255,0.06)",
-      boxShadow: "0 4px 24px rgba(0,0,0,0.2)",
+      background: C.card,
+      backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
+      borderRadius: 20,
+      padding: "24px 28px",
+      border: `1px solid ${C.border}`,
+      boxShadow: glow ? C.glow : "0 4px 24px rgba(0,0,0,0.25)",
+      transition: "transform 0.2s ease, box-shadow 0.2s ease",
+      animation: "fadeIn 0.4s ease",
       ...style,
     }}>
       {children}
@@ -113,1191 +143,401 @@ function Card({ children, style }) {
   );
 }
 
-function SectionTitle({ children, emoji }) {
+function SectionTitle({ children, emoji, sub }) {
   return (
-    <h2 style={{
-      fontSize: 20, fontWeight: 700, color: COLORS.text, margin: "0 0 16px 0",
-      display: "flex", alignItems: "center", gap: 8,
-    }}>
-      <span>{emoji}</span> {children}
-    </h2>
+    <div style={{ marginBottom: sub ? 4 : 16 }}>
+      <h2 style={{
+        fontSize: 18, fontWeight: 800, color: C.text, margin: 0,
+        display: "flex", alignItems: "center", gap: 10,
+        letterSpacing: "-0.02em",
+      }}>
+        <span style={{ fontSize: 22 }}>{emoji}</span> {children}
+      </h2>
+      {sub && <p style={{ fontSize: 12, color: C.muted, margin: "4px 0 12px 32px" }}>{sub}</p>}
+    </div>
   );
 }
 
-// âââ weather helpers âââ
-const WMO_ICONS = {
-  0: "âï¸", 1: "ð¤ï¸", 2: "â", 3: "âï¸",
-  45: "ð«ï¸", 48: "ð«ï¸",
-  51: "ð¦ï¸", 53: "ð¦ï¸", 55: "ð§ï¸",
-  56: "ð¨ï¸", 57: "ð¨ï¸",
-  61: "ð§ï¸", 63: "ð§ï¸", 65: "ð§ï¸",
-  66: "ð¨ï¸", 67: "ð¨ï¸",
-  71: "âï¸", 73: "âï¸", 75: "âï¸", 77: "âï¸",
-  80: "ð¦ï¸", 81: "ð§ï¸", 82: "ð§ï¸",
-  85: "ð¨ï¸", 86: "ð¨ï¸",
-  95: "âï¸", 96: "âï¸", 99: "âï¸",
-};
-const WMO_DESC = {
-  0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
-  45: "Fog", 48: "Freezing fog",
-  51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle",
-  56: "Freezing drizzle", 57: "Heavy freezing drizzle",
-  61: "Light rain", 63: "Rain", 65: "Heavy rain",
-  66: "Freezing rain", 67: "Heavy freezing rain",
-  71: "Light snow", 73: "Snow", 75: "Heavy snow", 77: "Snow grains",
-  80: "Light showers", 81: "Showers", 82: "Heavy showers",
-  85: "Light snow showers", 86: "Heavy snow showers",
-  95: "Thunderstorm", 96: "Thunderstorm + hail", 99: "Heavy thunderstorm",
-};
-
-// âââ main dashboard âââ
-
-export default function LifeDashboard() {
-  const [weight, setWeight] = useState(INITIAL_WEIGHT);
-  const [fitnessGoals, setFitnessGoals] = useState(INITIAL_FITNESS_GOALS);
-  const [debts, setDebts] = useState(INITIAL_DEBTS);
-  const [editingDebt, setEditingDebt] = useState(null);
-  const [tempDebtVal, setTempDebtVal] = useState("");
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
-  const [newTask, setNewTask] = useState("");
-  const [newTaskCat, setNewTaskCat] = useState("work");
-  const [editingGoal, setEditingGoal] = useState(null);
-  const [editingWeight, setEditingWeight] = useState(false);
-  const [tempWeight, setTempWeight] = useState("");
-
-  // ââ task stats ââ
-  const taskStats = useMemo(() => {
-    const cats = ["work", "diet", "family", "personal"];
-    const stats = {};
-    let totalAll = 0, doneAll = 0;
-    cats.forEach((c) => {
-      const items = tasks.filter((t) => t.category === c);
-      const done = items.filter((t) => t.done).length;
-      stats[c] = { total: items.length, done, pct: items.length ? Math.round((done / items.length) * 100) : 0 };
-      totalAll += items.length;
-      doneAll += done;
-    });
-    stats.all = { total: totalAll, done: doneAll, pct: totalAll ? Math.round((doneAll / totalAll) * 100) : 0 };
-    return stats;
-  }, [tasks]);
-
-  const pieData = useMemo(() => {
-    const total = tasks.length;
-    return ["work", "diet", "family", "personal"].map((c) => {
-      const count = tasks.filter((t) => t.category === c).length;
-      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-      return {
-        name: c.charAt(0).toUpperCase() + c.slice(1),
-        value: count,
-        pct,
-      };
-    });
-  }, [tasks]);
-
-  // ââ weight helpers ââ
-  const weightLost = weight.start - weight.current;
-  const weightToGo = weight.current - weight.goal;
-  const weightTotalToLose = weight.start - weight.goal;
-  const weightPct = Math.round((weightLost / weightTotalToLose) * 100);
-
-  // ââ handlers ââ
-  const toggleTask = (id) => setTasks((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done } : t));
-  const deleteTask = (id) => setTasks((prev) => prev.filter((t) => t.id !== id));
-  const addTask = () => {
-    if (!newTask.trim()) return;
-    setTasks((prev) => [...prev, { id: Date.now(), category: newTaskCat, text: newTask.trim(), done: false }]);
-    setNewTask("");
-  };
-
-  const updateGoalCurrent = (id, val) => {
-    setFitnessGoals((prev) => prev.map((g) => g.id === id ? { ...g, current: Math.max(0, Number(val) || 0) } : g));
-  };
-
-  const toggleFitnessToday = (id) => {
-    setFitnessGoals((prev) => prev.map((g) => g.id === id ? { ...g, doneToday: !g.doneToday } : g));
-  };
-
-  const updateCurrentWeight = () => {
-    const w = Number(tempWeight);
-    if (w > 0 && w <= weight.start) {
-      setWeight((prev) => ({ ...prev, current: w }));
-    }
-    setEditingWeight(false);
-    setTempWeight("");
-  };
-
-  // ââ body comp state (editable) ââ
-  const [bodyFat, setBodyFat] = useState({ current: 28, start: 35, goal: 15, unit: "%" });
-  const [fatMass, setFatMass] = useState({ start: 97, current: 69, goal: 30, unit: "lbs" });
-  const [muscle, setMuscle] = useState({ current: 155, start: 140, unit: "lbs" });
-  const [editingSummary, setEditingSummary] = useState(null);
-  const [tempSummaryVal, setTempSummaryVal] = useState("");
-
-  const [activeTab, setActiveTab] = useState("all");
-  const [weather, setWeather] = useState(null);
-  const [weatherError, setWeatherError] = useState(false);
-
-  const [sheetsLoaded, setSheetsLoaded] = useState(false);
-
-  // ââ Load from Google Sheets on mount ââ
-  useEffect(() => {
-    if (!isConfigured()) return;
-    fetchAllData().then((data) => {
-      if (data.weight) {
-        setWeight({ start: data.weight.start, current: data.weight.current, goal: data.weight.goal, unit: "lbs", history: [] });
-        setBodyFat({ start: data.weight.bodyFat.start, current: data.weight.bodyFat.current, goal: data.weight.bodyFat.goal, unit: "%" });
-        setFatMass({ start: data.weight.fatMass.start, current: data.weight.fatMass.current, goal: data.weight.fatMass.goal, unit: "lbs" });
-        setMuscle({ start: data.weight.muscle.start, current: data.weight.muscle.current, unit: "lbs" });
-      }
-      if (data.fitness) setFitnessGoals(data.fitness);
-      if (data.tasks) setTasks(data.tasks);
-      if (data.debts) setDebts(data.debts);
-      setSheetsLoaded(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    // Kingston upon Thames: 51.4123, -0.3007
-    fetch("https://api.open-meteo.com/v1/forecast?latitude=51.4123&longitude=-0.3007&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe/London&forecast_days=7")
-      .then((r) => r.json())
-      .then((data) => setWeather(data))
-      .catch(() => setWeatherError(true));
-  }, []);
-
-  // ââ live clock ââ
-  const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const worldClocks = [
-    { city: "London", flag: "ð¬ð§", tz: "Europe/London" },
-    { city: "New York", flag: "ðºð¸", tz: "America/New_York" },
-    { city: "India", flag: "ð®ð³", tz: "Asia/Kolkata" },
-    { city: "Philippines", flag: "ðµð­", tz: "Asia/Manila" },
-  ];
-
-  const catEmoji = { work: "ð¼", diet: "ð¥", family: "ð¨âð©âð§âð¦", personal: "ð" };
-  const catLabel = { work: "Work", diet: "Diet", family: "Family", personal: "Personal" };
-
+function StatBox({ label, value, sub, color, borderColor, bg, icon }) {
   return (
     <div style={{
-      minHeight: "100vh", background: COLORS.bg, color: COLORS.text,
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      padding: "32px 24px",
+      background: bg || C.card,
+      backdropFilter: "blur(16px)",
+      borderRadius: 16, padding: "20px 16px", textAlign: "center",
+      border: `1px solid ${borderColor || C.border}`,
+      boxShadow: "0 2px 16px rgba(0,0,0,0.2)",
+      animation: "fadeIn 0.5s ease",
+      transition: "transform 0.2s ease",
+      minWidth: 0,
     }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <h1 style={{
-            fontSize: 36, fontWeight: 800, margin: 0,
-            background: "linear-gradient(135deg, #38BDF8, #818CF8, #C084FC)",
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-          }}>
-            James's Life Dashboard
-          </h1>
-          <p style={{ color: COLORS.muted, marginTop: 8, fontSize: 16 }}>
-            Track your progress. Crush your goals. One day at a time.
-          </p>
-          {isConfigured() && sheetsLoaded && (
-            <p style={{ color: COLORS.success, marginTop: 4, fontSize: 12 }}>Connected to Google Sheets</p>
-          )}
-          {!isConfigured() && (
-            <div style={{
-              marginTop: 12, padding: "10px 20px", background: "rgba(249,115,22,0.1)",
-              borderRadius: 10, border: "1px solid rgba(249,115,22,0.2)", display: "inline-block",
-            }}>
-              <span style={{ fontSize: 13, color: "#F97316" }}>
-                Using default data â update SHEET_ID in src/sheets.js to connect your Google Sheet
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* âââ TAB NAVIGATION âââ */}
-        <div style={{
-          display: "flex", justifyContent: "center", gap: 8, marginBottom: 28,
-          background: COLORS.card, borderRadius: 14, padding: 6,
-          border: "1px solid rgba(255,255,255,0.06)", maxWidth: 500, margin: "0 auto 28px auto",
-        }}>
-          {[
-            { id: "all", label: "All", icon: "ð" },
-            { id: "tasks", label: "Tasks", icon: "â" },
-            { id: "health", label: "Health", icon: "ðª" },
-            { id: "money", label: "Money", icon: "ð°" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                flex: 1, padding: "10px 16px", borderRadius: 10, border: "none",
-                background: activeTab === tab.id
-                  ? "linear-gradient(135deg, #38BDF8, #818CF8)"
-                  : "transparent",
-                color: activeTab === tab.id ? "#fff" : COLORS.muted,
-                fontSize: 14, fontWeight: activeTab === tab.id ? 700 : 500,
-                cursor: "pointer", transition: "all 0.2s",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              }}
-            >
-              <span>{tab.icon}</span> {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* âââ WORLD CLOCK âââ */}
-        {(activeTab === "all") && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
-            {worldClocks.map((clock) => {
-              const timeStr = now.toLocaleString("en-GB", {
-                timeZone: clock.tz, hour: "numeric", minute: "2-digit", hour12: true,
-              });
-              const dateStr = now.toLocaleString("en-GB", {
-                timeZone: clock.tz, weekday: "short", day: "numeric", month: "short",
-              });
-              // Determine if it's daytime (6am-8pm) in that timezone
-              const hour = parseInt(now.toLocaleString("en-GB", { timeZone: clock.tz, hour: "numeric", hour12: false }));
-              const isDaytime = hour >= 6 && hour < 20;
-              return (
-                <div key={clock.tz} style={{
-                  background: COLORS.card, borderRadius: 14, padding: "16px 14px", textAlign: "center",
-                  border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-                }}>
-                  <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
-                    {clock.flag} {clock.city}
-                  </div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.text, letterSpacing: 0.5 }}>
-                    {timeStr.replace(/ /g, "").toUpperCase()}
-                  </div>
-                  <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>
-                    {dateStr} {isDaytime ? "âï¸" : "ð"}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* âââ WEATHER WIDGET âââ */}
-        {(activeTab === "all") && weather && weather.current && (
-          <Card style={{ marginBottom: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-              {/* Current weather */}
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <span style={{ fontSize: 48 }}>{WMO_ICONS[weather.current.weather_code] || "ð¤ï¸"}</span>
-                <div>
-                  <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Kingston upon Thames</div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontSize: 36, fontWeight: 800, color: COLORS.text }}>{Math.round(weather.current.temperature_2m)}Â°C</span>
-                    <span style={{ fontSize: 14, color: COLORS.muted }}>Feels {Math.round(weather.current.apparent_temperature)}Â°C</span>
-                  </div>
-                  <div style={{ fontSize: 13, color: COLORS.muted }}>
-                    {WMO_DESC[weather.current.weather_code] || "Unknown"} Â· ð¨ {Math.round(weather.current.wind_speed_10m)} km/h Â· ð§ {weather.current.relative_humidity_2m}%
-                  </div>
-                </div>
-              </div>
-
-              {/* 7-day forecast */}
-              <div style={{ display: "flex", gap: 8 }}>
-                {weather.daily && weather.daily.time.map((date, i) => {
-                  const day = new Date(date);
-                  const dayName = i === 0 ? "Today" : day.toLocaleDateString("en-GB", { weekday: "short" });
-                  return (
-                    <div key={date} style={{
-                      textAlign: "center", padding: "8px 10px", borderRadius: 10,
-                      background: i === 0 ? "rgba(56,189,248,0.1)" : COLORS.cardAlt,
-                      border: i === 0 ? "1px solid rgba(56,189,248,0.2)" : "1px solid rgba(255,255,255,0.04)",
-                      minWidth: 64,
-                    }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: i === 0 ? COLORS.accent : COLORS.muted, marginBottom: 4 }}>{dayName}</div>
-                      <div style={{ fontSize: 24 }}>{WMO_ICONS[weather.daily.weather_code[i]] || "ð¤ï¸"}</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.text, marginTop: 4 }}>
-                        {Math.round(weather.daily.temperature_2m_max[i])}Â°
+      {icon && <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>}
+      <div style={{
+        fontSize: 10, color: C.muted, textTransform: "uppercase",
+    ÆWGFW%76æs¢#ãVÒ"ÂÖ&vä&÷GFöÓ¢bÂföçEvVvC¢cÀ¢×Óç¶Æ&VÇÓÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢#ÂföçEvVvC¢Â6öÆ÷#¢6öÆ÷"ÇÂ2æ66VçBÂÆæTVvC¢×Óç·fÇVWÓÂöFcà¢·7V"bbÆFb7GÆS×·²föçE6¦S¢Â6öÆ÷#¢6öÆ÷"ÇÂ2æ×WFVBÂÖ&våF÷¢BÂföçEvVvC¢S×Óç·7V'ÓÂöFcçÐ¢ÂöFcà¢°§Ð ¦gVæ7FöâVFF&ÆUfÇVR²fÇVRÂ6öÆ÷"Âöå6fRÂföçE6¦RÒ#Ò°¢6öç7B¶VFFærÂ6WDVFFæuÒÒW6U7FFRfÇ6R°¢6öç7B·FV×Â6WEFV×ÒÒW6U7FFR""°¢6öç7B6öÖÖBÒÓâ²öå6fRçVÖ&W"FV×ÇÂfÇVR²6WDVFFærfÇ6R²Ó°¢bVFFær&WGW&â¢ÆçWBGSÒ&çVÖ&W""fÇVS×·FV×Ð¢öä6ævS×²RÓâ6WEFV×RçF&vWBçfÇVRÐ¢öä&ÇW#×¶6öÖÖGÐ¢öä¶WF÷vã×²RÓâRæ¶WÓÓÒ$VçFW""bb6öÖÖBÐ¢WFôfö7W0¢7GÆS×·°¢vGF¢sÂ&6¶w&÷VæC¢'&v&#SRÃ#SRÃ#SRÃãR"Â&÷&FW#¢6öÆBG¶6öÆ÷"ÇÂ2æ66VçGÖÀ¢&÷&FW%&FW3¢Â6öÆ÷#¢2çFWBÂföçE6¦S¢föçE6¦RÒ"ÂFWDÆvã¢&6VçFW""À¢FFæs¢#'G"ÂföçEvVvC¢Â÷WFÆæS¢&æöæR"À¢×Ð¢óà¢°¢&WGW&â¢Ç7âöä6Æ6³×²Óâ²6WDVFFærG'VR²6WEFV×7G&ærfÇVR²×Ð¢7GÆS×·²7W'6÷#¢'öçFW""Â&÷&FW$&÷GFöÓ¢#'F6VB&v&#SRÃ#SRÃ#SRÃãR"ÂG&ç6Föã¢&&÷&FW"Ö6öÆ÷"ã'2"×Ð¢FFÆSÒ$6Æ6²FòWFFR#à¢·fÇVWÐ¢Â÷7ãà¢°§Ð ¢òò)H)H)HvVFW"VÇW'2)H)H)H ¦6öç7BtÔõô4ôå2Ò°¢¢%ÇS#cÇTdSb"Â¢%ÇW³c3#GÕÇTdSb"Â#¢%ÇS#d3R"Â3¢%ÇS#cÇTdSb"À¢CS¢%ÇW³c3$'ÕÇTdSb"ÂC¢%ÇW³c3$'ÕÇTdSb"À¢S¢%ÇW³c3#gÕÇTdSb"ÂS3¢%ÇW³c3#gÕÇTdSb"ÂSS¢%ÇW³c3#wÕÇTdSb"À¢c¢%ÇW³c3#wÕÇTdSb"Âc3¢%ÇW³c3#wÕÇTdSb"ÂcS¢%ÇW³c3#wÕÇTdSb"À¢s¢%ÇS#sCEÇTdSb"Âs3¢%ÇS#sCEÇTdSb"ÂsS¢%ÇS#sCEÇTdSb"À¢¢%ÇW³c3#gÕÇTdSb"Â¢%ÇW³c3#wÕÇTdSb"Â#¢%ÇW³c3#wÕÇTdSb"À¢S¢%ÇS#d3ÇTdSb"Âc¢%ÇS#d3ÇTdSb"Â¢%ÇS#d3ÇTdSb"À§Ó°¦6öç7BtÔõôDU42Ò°¢¢$6ÆV"6·"Â¢$ÖæÇ6ÆV""Â#¢%'FÇ6Æ÷VG"Â3¢$÷fW&67B"À¢CS¢$för"ÂC¢$g&VW¦ærför"À¢S¢$ÆvBG&§¦ÆR"ÂS3¢$G&§¦ÆR"ÂSS¢$VgG&§¦ÆR"À¢c¢$ÆvB&â"Âc3¢%&â"ÂcS¢$Vg&â"À¢s¢$ÆvB6æ÷r"Âs3¢%6æ÷r"ÂsS¢$Vg6æ÷r"À¢¢$ÆvB6÷vW'2"Â¢%6÷vW'2"Â#¢$Vg6÷vW'2"À¢S¢%FVæFW'7F÷&Ò"Âc¢%FVæFW'7F÷&Ò²Â"Â¢$VgFVæFW'7F÷&Ò"À§Ó° ¢òò)H)H)HÖâF6&ö&B)H)H)H ¦W÷'BFVfVÇBgVæ7FöâÆfTF6&ö&B°¢6öç7B·vVvBÂ6WEvVvEÒÒW6U7FFRäDÅõtTtB°¢6öç7B¶fFæW74vöÇ2Â6WDfFæW74vöÇ5ÒÒW6U7FFRäDÅôdDäU55ôtôÅ2°¢6öç7B¶FV'G2Â6WDFV'G5ÒÒW6U7FFRäDÅôDT%E2°¢6öç7B¶VFFætFV'BÂ6WDVFFætFV'EÒÒW6U7FFRçVÆÂ°¢6öç7B·FV×FV'EfÂÂ6WEFV×FV'EfÅÒÒW6U7FFR""°¢6öç7B·F6·2Â6WEF6·5ÒÒW6U7FFRäDÅõD4µ2°¢6öç7B¶æWuF6²Â6WDæWuF6µÒÒW6U7FFR""°¢6öç7B¶æWuF6´6BÂ6WDæWuF6´6EÒÒW6U7FFR'v÷&²"°¢6öç7B¶VFFætvöÂÂ6WDVFFætvöÅÒÒW6U7FFRçVÆÂ°¢6öç7B¶&öGfBÂ6WD&öGfEÒÒW6U7FFR²7W'&VçC¢#Â7F'C¢3RÂvöÃ¢RÂVæC¢"R"Ò°¢6öç7B¶fDÖ72Â6WDfDÖ75ÒÒW6U7FFR²7F'C¢rÂ7W'&VçC¢cÂvöÃ¢3ÂVæC¢&Æ'2"Ò°¢6öç7B¶×W66ÆRÂ6WD×W66ÆUÒÒW6U7FFR²7W'&VçC¢SRÂ7F'C¢CÂVæC¢&Æ'2"Ò°¢6öç7B¶7FfUF"Â6WD7FfUF%ÒÒW6U7FFR&ÆÂ"°¢6öç7B·vVFW"Â6WEvVFW%ÒÒW6U7FFRçVÆÂ°¢6öç7B·vVFW$W'&÷"Â6WEvVFW$W'&÷%ÒÒW6U7FFRfÇ6R°¢6öç7B·6VWG4ÆöFVBÂ6WE6VWG4ÆöFVEÒÒW6U7FFRfÇ6R° ¢òò)H)HF6²7FG2)H)H ¢6öç7BF6µ7FG2ÒW6TÖVÖòÓâ°¢6öç7B6G2Ò²'v÷&²"Â&FWB"Â&fÖÇ"Â'W'6öæÂ%Ó°¢6öç7B7FG2Ò·Ó°¢ÆWBF÷FÄÆÂÒÂFöæTÆÂÒ°¢6G2æf÷$V62Óâ°¢6öç7BFV×2ÒF6·2æfÇFW"BÓâBæ6FVv÷'ÓÓÒ2°¢6öç7BFöæRÒFV×2æfÇFW"BÓâBæFöæRæÆVæwF°¢7FG5¶5ÒÒ²F÷FÃ¢FV×2æÆVæwFÂFöæRÂ7C¢FV×2æÆVæwFòÖFç&÷VæBFöæRòFV×2æÆVæwF¢¢Ó°¢F÷FÄÆÂ³ÒFV×2æÆVæwF°¢FöæTÆÂ³ÒFöæS°¢Ò°¢7FG2æÆÂÒ²F÷FÃ¢F÷FÄÆÂÂFöæS¢FöæTÆÂÂ7C¢F÷FÄÆÂòÖFç&÷VæBFöæTÆÂòF÷FÄÆÂ¢¢Ó°¢&WGW&â7FG3°¢ÒÂ·F6·5Ò° ¢6öç7BTFFÒW6TÖVÖòÓâ°¢6öç7BF÷FÂÒF6·2æÆVæwF°¢&WGW&â²'v÷&²"Â&FWB"Â&fÖÇ"Â'W'6öæÂ%ÒæÖ2Óâ°¢6öç7B6÷VçBÒF6·2æfÇFW"BÓâBæ6FVv÷'ÓÓÒ2æÆVæwF°¢&WGW&â²æÖS¢2æ6$BçFõWW$66R²2ç6Æ6RÂfÇVS¢6÷VçBÂ7C¢F÷FÂâòÖFç&÷VæB6÷VçBòF÷FÂ¢¢Ó°¢Ò°¢ÒÂ·F6·5Ò° ¢6öç7BvVvDÆ÷7BÒvVvBç7F'BÒvVvBæ7W'&VçC°¢6öç7BvVvEFôvòÒvVvBæ7W'&VçBÒvVvBævöÃ°¢6öç7BvVvEF÷FÅFôÆ÷6RÒvVvBç7F'BÒvVvBævöÃ°¢6öç7BvVvE7BÒÖFç&÷VæBvVvDÆ÷7BòvVvEF÷FÅFôÆ÷6R¢° ¢òò)H)HæFÆW'2)H)H ¢6öç7BFövvÆUF6²ÒBÓâ6WEF6·2ÓâæÖBÓâBæBÓÓÒBò²ââçBÂFöæS¢BæFöæRÒ¢B°¢6öç7BFVÆWFUF6²ÒBÓâ6WEF6·2ÓâæfÇFW"BÓâBæBÓÒB°¢6öç7BFEF6²ÒÓâ°¢bæWuF6²çG&Ò&WGW&ã°¢6WEF6·2Óâ²ââçÂ²C¢FFRææ÷rÂ6FVv÷'¢æWuF6´6BÂFWC¢æWuF6²çG&ÒÂFöæS¢fÇ6RÕÒ°¢6WDæWuF6²""°¢Ó°¢6öç7BWFFTvöÄ7W'&VçBÒBÂfÂÓâ6WDfFæW74vöÇ2ÓâæÖrÓâræBÓÓÒBò²ââærÂ7W'&VçC¢ÖFæÖÂçVÖ&W"fÂÇÂÒ¢r°¢6öç7BFövvÆTfFæW75FöFÒBÓâ6WDfFæW74vöÇ2ÓâæÖrÓâræBÓÓÒBò²ââærÂFöæUFöF¢ræFöæUFöFÒ¢r° ¢òò)H)HÆöBg&öÒvöövÆR6VWG2)H)H ¢W6TVffV7BÓâ°¢b46öæfwW&VB&WGW&ã°¢fWF6ÆÄFFçFVâFFÓâ°¢bFFçvVvB°¢6WEvVvB²7F'C¢FFçvVvBç7F'BÂ7W'&VçC¢FFçvVvBæ7W'&VçBÂvöÃ¢FFçvVvBævöÂÂVæC¢&Æ'2"Â7F÷'¢µÒÒ°¢6WD&öGfB²7F'C¢FFçvVvBæ&öGfBç7F'BÂ7W'&VçC¢FFçvVvBæ&öGfBæ7W'&VçBÂvöÃ¢FFçvVvBæ&öGfBævöÂÂVæC¢"R"Ò°¢6WDfDÖ72²7F'C¢FFçvVvBæfDÖ72ç7F'BÂ7W'&VçC¢FFçvVvBæfDÖ72æ7W'&VçBÂvöÃ¢FFçvVvBæfDÖ72ævöÂÂVæC¢&Æ'2"Ò°¢6WD×W66ÆR²7F'C¢FFçvVvBæ×W66ÆRç7F'BÂ7W'&VçC¢FFçvVvBæ×W66ÆRæ7W'&VçBÂVæC¢&Æ'2"Ò°¢Ð¢bFFæfFæW726WDfFæW74vöÇ2FFæfFæW72°¢bFFçF6·26WEF6·2FFçF6·2°¢bFFæFV'G26WDFV'G2FFæFV'G2°¢6WE6VWG4ÆöFVBG'VR°¢Ò°¢ÒÂµÒ° ¢W6TVffV7BÓâ°¢fWF6&GG3¢òöæ÷VâÖÖWFVòæ6öÒ÷cöf÷&V67CöÆFGVFSÓSãC#2fÆöævGVFSÒÓã3rf7W'&VçC×FV×W&GW&Uó&ÒÆ&VçE÷FV×W&GW&RÇvVFW%ö6öFRÇvæE÷7VVEóÒÇ&VÆFfUöVÖFGó&ÒfFÇ×vVFW%ö6öFRÇFV×W&GW&Uó&ÕöÖÇFV×W&GW&Uó&ÕöÖâÇ&V6FFöå÷&ö&&ÆGöÖgFÖW¦öæSÔWW&÷RôÆöæFöâff÷&V67EöF3Ór"¢çFVâ"Óâ"æ§6öâçFVâBÓâ6WEvVFW"Bæ6F6Óâ6WEvVFW$W'&÷"G'VR°¢ÒÂµÒ° ¢6öç7B¶æ÷rÂ6WDæ÷uÒÒW6U7FFRæWrFFR°¢W6TVffV7BÓâ²6öç7BBÒ6WDçFW'fÂÓâ6WDæ÷ræWrFFRÂ²&WGW&âÓâ6ÆV$çFW'fÂB²ÒÂµÒ° ¢6öç7Bv÷&ÆD6Æö6·2Ò°¢²6G¢$ÆöæFöâ"ÂfÆs¢%ÇW³cT7ÕÇW³cSwÒ"ÂG£¢$WW&÷RôÆöæFöâ"ÒÀ¢²6G¢$æWr÷&²"ÂfÆs¢%ÇW³cdÕÇW³ccÒ"ÂG£¢$ÖW&6ôæWuõ÷&²"ÒÀ¢²6G¢$æF"ÂfÆs¢%ÇW³cTWÕÇW³cc7Ò"ÂG£¢$6ô¶öÆ¶F"ÒÀ¢²6G¢%ÆæW2"ÂfÆs¢%ÇW³ccWÕÇW³cTGÒ"ÂG£¢$6ôÖæÆ"ÒÀ¢Ó° ¢6öç7B6DVÖö¦Ò²v÷&³¢%ÇW³cD$7Ò"ÂFWC¢%ÇW³cSwÒ"ÂfÖÇ¢%ÇW³cCcÕÇS#EÇW³cCcÕÇS#EÇW³cCcwÕÇS#EÇW³cCcgÒ"ÂW'6öæÃ¢%ÇW³c3gÒ"Ó°¢6öç7B6DÆ&VÂÒ²v÷&³¢%v÷&²"ÂFWC¢$FWB"ÂfÖÇ¢$fÖÇ"ÂW'6öæÃ¢%W'6öæÂ"Ó° ¢òò)H)Hæ¦V7BvÆö&Â552)H)H ¢W6TVffV7BÓâ°¢6öç7BBÒ&F6&ö&BÖvÆö&ÂÖ772#°¢bFö7VÖVçBævWDVÆVÖVçD'BB°¢6öç7B7GÆRÒFö7VÖVçBæ7&VFTVÆVÖVçB'7GÆR"°¢7GÆRæBÒC°¢7GÆRçFWD6öçFVçBÒtÄô$Åô553°¢Fö7VÖVçBæVBæVæD6ÆB7GÆR°¢Ð¢ÒÂµÒ° ¢òò)H)H6ö&W"6Æ2)H)H ¢6öç7B6ö&W$FFRÒæWrFFR##RÂÂR°¢6öç7B6ö&W$F2ÒÖFæfÆö÷"æWrFFRÒ6ö&W$FFRò¢c¢c¢#B°¢6öç7B6ö&W$ÖöçF2ÒÖFæfÆö÷"6ö&W$F2ò3° ¢&WGW&â¢ÆFb7GÆS×·²ÖäVvC¢#f"ÂFFæs¢#3'#"Â÷6Föã¢'&VÆFfR"Â÷fW&fÆ÷s¢&FFVâ"×Óà¢²ò¢&6¶w&÷VæBw&FVçB÷&'2¢÷Ð¢ÆFb7GÆS×·°¢÷6Föã¢&fVB"ÂF÷¢Ó#ÂÆVgC¢Ó#ÂvGF¢cÂVvC¢cÀ¢&6¶w&÷VæC¢'&FÂÖw&FVçB6&6ÆRÂ&v&SbÃÃ#CÃãRÂG&ç7&VçBsR"À¢öçFW$WfVçG3¢&æöæR"Â¤æFW¢À¢×Òóà¢ÆFb7GÆS×·°¢÷6Föã¢&fVB"Â&÷GFöÓ¢Ó#Â&vC¢Ó#ÂvGF¢cÂVvC¢cÀ¢&6¶w&÷VæC¢'&FÂÖw&FVçB6&6ÆRÂ&v&3Ã"Ã#CbÃãbRÂG&ç7&VçBsR"À¢öçFW$WfVçG3¢&æöæR"Â¤æFW¢À¢×Òóà ¢ÆFb7GÆS×·²ÖvGF¢#ÂÖ&vã¢#WFò"Â÷6Föã¢'&VÆFfR"Â¤æFW¢×Óà ¢²ò¢)Y)Y)YTDU")Y)Y)Y¢÷Ð¢ÆVFW"7GÆS×·²FWDÆvã¢&6VçFW""ÂÖ&vä&÷GFöÓ¢3bÂæÖFöã¢&fFTâãW2V6R"×Óà¢Æ7GÆS×·°¢föçE6¦S¢&6Æ×#ÂGgrÂC'"ÂföçEvVvC¢ÂÖ&vã¢ÂÆWGFW%76æs¢"Óã6VÒ"À¢&6¶w&÷VæC¢&ÆæV"Öw&FVçB3VFVrÂ33$DcRÂ34cSRÂ43Dd2R"À¢vV&¶D&6¶w&÷VæD6Æ¢'FWB"ÂvV&¶EFWDfÆÄ6öÆ÷#¢'G&ç7&VçB"À¢ÆæTVvC¢ã"À¢×Óà¢¦ÖW2w2ÆfRF6&ö&@¢Âöà¢Ç7GÆS×·²6öÆ÷#¢2æ×WFVBÂÖ&våF÷¢ÂföçE6¦S¢RÂföçEvVvC¢C×Óà¢G&6²÷W"&öw&W72â7'W6÷W"vöÇ2âöæRFBFÖRà¢Â÷à¢¶46öæfwW&VBbb6VWG4ÆöFVBbb¢ÆFb7GÆS×·°¢F7Æ¢&æÆæRÖfÆW"ÂÆväFV×3¢&6VçFW""Âv¢bÀ¢Ö&våF÷¢ÂFFæs¢#GG"Â&÷&FW%&FW3¢À¢&6¶w&÷VæC¢'&v&3BÃrÃBÃã"Â&÷&FW#¢#6öÆB&v&3BÃrÃBÃã""À¢×Óà¢ÆFb7GÆS×·²vGF¢bÂVvC¢bÂ&÷&FW%&FW3¢#SR"Â&6¶w&÷VæC¢2ç7V66W72ÂæÖFöã¢'VÇ6R'2æfæFR"×Òóà¢Ç7â7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2ç7V66W72ÂföçEvVvC¢cÂÆWGFW%76æs¢#ã&VÒ"×Óä6öææV7FVBFòvöövÆR6VWG3Â÷7ãà¢ÂöFcà¢Ð¢ÂöVFW#à ¢²ò¢)Y)Y)YD"ädtDôâ)Y)Y)Y¢÷Ð¢Ææb7GÆS×·°¢F7Æ¢&fÆW"Â§W7Fg6öçFVçC¢&6VçFW""Âv¢BÂÖ&vä&÷GFöÓ¢3"À¢&6¶w&÷VæC¢2ævÆ72Â&6¶G&÷fÇFW#¢&&ÇW"#"ÂvV&¶D&6¶G&÷fÇFW#¢&&ÇW"#"À¢&÷&FW%&FW3¢bÂFFæs¢RÀ¢&÷&FW#¢6öÆBG´2æ&÷&FW'ÖÂÖvGF¢CÂÖ&vã¢#WFò3'WFò"À¢&÷6F÷s¢#G#G&v&ÃÃÃãR"À¢×Óà¢µ°¢²C¢&ÆÂ"ÂÆ&VÃ¢$÷fW'fWr"Â6öã¢%ÇW³cD4'Ò"ÒÀ¢²C¢'F6·2"ÂÆ&VÃ¢%F6·2"Â6öã¢%ÇS#sR"ÒÀ¢²C¢&VÇF"ÂÆ&VÃ¢$VÇF"Â6öã¢%ÇW³cDÒ"ÒÀ¢²C¢&ÖöæW"ÂÆ&VÃ¢$ÖöæW"Â6öã¢%ÇW³cD#Ò"ÒÀ¢ÒæÖF"Óâ¢Æ'WGFöâ¶W×·F"æGÒöä6Æ6³×²Óâ6WD7FfUF"F"æBÒ7GÆS×·°¢fÆW¢ÂFFæs¢#'"Â&÷&FW%&FW3¢"Â&÷&FW#¢&æöæR"À¢&6¶w&÷VæC¢7FfUF"ÓÓÒF"æBò&ÆæV"Öw&FVçB3VFVrÂ33$DcÂ34c"¢'G&ç7&VçB"À¢6öÆ÷#¢7FfUF"ÓÓÒF"æBò"6ffb"¢2æ×WFVBÀ¢föçE6¦S¢2ÂföçEvVvC¢7FfUF"ÓÓÒF"æBòs¢SÀ¢7W'6÷#¢'öçFW""ÂG&ç6Föã¢&ÆÂã#W2V6R"À¢F7Æ¢&fÆW"ÂÆväFV×3¢&6VçFW""Â§W7Fg6öçFVçC¢&6VçFW""Âv¢RÀ¢&÷6F÷s¢7FfUF"ÓÓÒF"æBò#''&v&SbÃÃ#CÃã2"¢&æöæR"À¢×Óà¢Ç7â7GÆS×·²föçE6¦S¢B×Óç·F"æ6öçÓÂ÷7ãâ·F"æÆ&VÇÐ¢Âö'WGFöãà¢Ð¢Âöæcà ¢²ò¢)Y)Y)Ytõ$ÄB4Äô4µ2)Y)Y)Y¢÷Ð¢¶7FfUF"ÓÓÒ&ÆÂ"bb¢ÆFb7GÆS×·°¢F7Æ¢&w&B"Âw&EFV×ÆFT6öÇVÖç3¢'&WVBWFòÖfBÂÖæÖCÂg""À¢v¢"ÂÖ&vä&÷GFöÓ¢#À¢×Óà¢·v÷&ÆD6Æö6·2æÖ6Æö6²Óâ°¢6öç7BFÖU7G"Òæ÷rçFôÆö6ÆU7G&ær&VâÔt""Â²FÖU¦öæS¢6Æö6²çG¢Â÷W#¢&çVÖW&2"ÂÖçWFS¢#"ÖFvB"Â÷W##¢G'VRÒ°¢6öç7BFFU7G"Òæ÷rçFôÆö6ÆU7G&ær&VâÔt""Â²FÖU¦öæS¢6Æö6²çG¢ÂvVV¶F¢'6÷'B"ÂF¢&çVÖW&2"ÂÖöçF¢'6÷'B"Ò°¢6öç7B÷W"Ò'6TçBæ÷rçFôÆö6ÆU7G&ær&VâÔt""Â²FÖU¦öæS¢6Æö6²çG¢Â÷W#¢&çVÖW&2"Â÷W##¢fÇ6RÒ°¢6öç7B4FFÖRÒ÷W"ãÒbbb÷W"Â#°¢&WGW&â¢ÆFb¶W×¶6Æö6²çG§Ò7GÆS×·°¢&6¶w&÷VæC¢2ævÆ72Â&6¶G&÷fÇFW#¢&&ÇW"g"À¢&÷&FW%&FW3¢BÂFFæs¢#G'"ÂFWDÆvã¢&6VçFW""À¢&÷&FW#¢6öÆBG´2æ&÷&FW'ÖÀ¢æÖFöã¢&fFTâãG2V6R"À¢×Óà¢ÆFb7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2æ×WFVBÂFWEG&ç6f÷&Ó¢'WW&66R"ÂÆWGFW%76æs¢#ãVÒ"ÂÖ&vä&÷GFöÓ¢BÂföçEvVvC¢c×Óà¢¶6Æö6²æfÆwÒ¶6Æö6²æ6GÐ¢ÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢#"ÂföçEvVvC¢Â6öÆ÷#¢2çFWBÂÆWGFW%76æs¢#ã&VÒ"ÂföçEf&çDçVÖW&3¢'F'VÆ"ÖçV×2"×Óà¢·FÖU7G"ç&WÆ6RòörÂ""çFõWW$66RÐ¢ÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2æ×WFVBÂÖ&våF÷¢"×Óà¢¶FFU7G'Ò¶4FFÖRò%ÇS#cÇTdSb"¢%ÇW³c3Ò'Ð¢ÂöFcà¢ÂöFcà¢°¢ÒÐ¢ÂöFcà¢Ð ¢²ò¢)Y)Y)YtTDU")Y)Y)Y¢÷Ð¢¶7FfUF"ÓÓÒ&ÆÂ"bbvVFW"bbvVFW"æ7W'&VçBbb¢Ä6&B7GÆS×·²Ö&vä&÷GFöÓ¢#ÂFFæs¢###G"×ÒvÆ÷sà¢ÆFb7GÆS×·²F7Æ¢&fÆW"ÂÆväFV×3¢&6VçFW""Â§W7Fg6öçFVçC¢'76RÖ&WGvVVâ"ÂfÆWw&¢'w&"Âv¢#×Óà¢ÆFb7GÆS×·²F7Æ¢&fÆW"ÂÆväFV×3¢&6VçFW""Âv¢b×Óà¢Ç7â7GÆS×·²föçE6¦S¢CB×ÓçµtÔõô4ôå5·vVFW"æ7W'&VçBçvVFW%ö6öFUÒÇÂ%ÇW³c3#GÕÇTdSb'ÓÂ÷7ãà¢ÆFcà¢ÆFb7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2æ×WFVBÂFWEG&ç6f÷&Ó¢'WW&66R"ÂÆWGFW%76æs¢#ãVÒ"ÂföçEvVvC¢c×Óä¶æw7FöâWöâFÖW3ÂöFcà¢ÆFb7GÆS×·²F7Æ¢&fÆW"ÂÆväFV×3¢&&6VÆæR"Âv¢×Óà¢Ç7â7GÆS×·²föçE6¦S¢3"ÂföçEvVvC¢Â6öÆ÷#¢2çFWB×Óç´ÖFç&÷VæBvVFW"æ7W'&VçBçFV×W&GW&Uó&ÒÕÇS#3Â÷7ãà¢Ç7â7GÆS×·²föçE6¦S¢2Â6öÆ÷#¢2æ×WFVB×ÓäfVVÇ2´ÖFç&÷VæBvVFW"æ7W'&VçBæ&VçE÷FV×W&GW&RÕÇS#3Â÷7ãà¢ÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢"Â6öÆ÷#¢2æ×WFVBÂÖ&våF÷¢"×Óà¢µtÔõôDU45·vVFW"æ7W'&VçBçvVFW%ö6öFUÒÇÂ%Væ¶æ÷vâ'ÒÇS#rÇW³cDÒ´ÖFç&÷VæBvVFW"æ7W'&VçBçvæE÷7VVEóÒÒ¶ÒöÇS#rÇW³cDwÒ·vVFW"æ7W'&VçBç&VÆFfUöVÖFGó&×ÒP¢ÂöFcà¢ÂöFcà¢ÂöFcà¢ÆFb7GÆS×·²F7Æ¢&fÆW"Âv¢bÂfÆWw&¢'w&"×Óà¢·vVFW"æFÇbbvVFW"æFÇçFÖRæÖFFRÂÓâ°¢6öç7BFæÖRÒÓÓÒò%FöF"¢æWrFFRFFRçFôÆö6ÆTFFU7G&ær&VâÔt""Â²vVV¶F¢'6÷'B"Ò°¢&WGW&â¢ÆFb¶W×¶FFWÒ7GÆS×·°¢FWDÆvã¢&6VçFW""ÂFFæs¢#"Â&÷&FW%&FW3¢"À¢&6¶w&÷VæC¢ÓÓÒò'&v&SbÃÃ#CÃã""¢'&v&#SRÃ#SRÃ#SRÃã2"À¢&÷&FW#¢ÓÓÒò#6öÆB&v&SbÃÃ#CÃã#R"¢6öÆBG´2æ&÷&FW'ÖÀ¢ÖåvGF¢SbÂG&ç6Föã¢&&6¶w&÷VæBã'2"À¢×Óà¢ÆFb7GÆS×·²föçE6¦S¢ÂföçEvVvC¢sÂ6öÆ÷#¢ÓÓÒò2æ66VçB¢2æ×WFVBÂÖ&vä&÷GFöÓ¢2×Óç¶FæÖWÓÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢#×ÓçµtÔõô4ôå5·vVFW"æFÇçvVFW%ö6öFU¶ÕÒÇÂ%ÇW³c3#GÕÇTdSb'ÓÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢ÂföçEvVvC¢Â6öÆ÷#¢2çFWBÂÖ&våF÷¢2×Óç´ÖFç&÷VæBvVFW"æFÇçFV×W&GW&Uó&ÕöÖ¶ÒÕÇS#ÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2æ×WFVB×Óç´ÖFç&÷VæBvVFW"æFÇçFV×W&GW&Uó&ÕöÖå¶ÒÕÇS#ÂöFcà¢·vVFW"æFÇç&V6FFöå÷&ö&&ÆGöÖ¶Òâbb¢ÆFb7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2æ66VçBÂÖ&våF÷¢×ÓåÇW³c3#wÒ·vVFW"æFÇç&V6FFöå÷&ö&&ÆGöÖ¶×ÒSÂöFcà¢Ð¢ÂöFcà¢°¢ÒÐ¢ÂöFcà¢ÂöFcà¢Âô6&Cà¢Ð¢¶7FfUF"ÓÓÒ&ÆÂ"bbvVFW"bbvVFW$W'&÷"bb¢Ä6&B7GÆS×·²Ö&vä&÷GFöÓ¢#ÂFWDÆvã¢&6VçFW""ÂFFæs¢b×Óà¢Ç7â7GÆS×·²6öÆ÷#¢2æ×WFVBÂföçE6¦S¢2ÂæÖFöã¢'VÇ6RãW2æfæFR"×ÓåÇW³c3#GÕÇTdSbÆöFærvVFW"ââãÂ÷7ãà¢Âô6&Cà¢Ð ¢²ò¢)Y)Y)Y5TÔÔ%5DE2)Y)Y)Y¢÷Ð¢ÆFb7GÆS×·°¢F7Æ¢&w&B"À¢w&EFV×ÆFT6öÇVÖç3¢'&WVBWFòÖfBÂÖæÖSÂg""À¢v¢"ÂÖ&vä&÷GFöÓ¢#BÀ¢×Óà¢Å7FD&÷¢Æ&VÃÒ%6ö&W"F2"fÇVS×·6ö&W$F7Ò7V#×¶âG·6ö&W$ÖöçF7ÒÖöçF2ÇW³c3gÖÐ¢6öÆ÷#×´2ç7V66W77Ò&÷&FW$6öÆ÷#Ò'&v&3BÃrÃBÃã#R ¢&sÒ&ÆæV"Öw&FVçB3VFVrÂ&v&RÃ#2ÃC"ÃãÂ&v&2ÃSÃ3"Ããb ¢óà¢Å7FD&÷Æ&VÃÒ$7W'&VçBvVvB"fÇVS×·vVvBæ7W'&VçGÒ7V#×·vVvBçVæGÒ6öÆ÷#×´2æ66VçGÒóà¢Å7FD&÷Æ&VÃÒ%vVvBÆ÷7B"fÇVS×¶ÒG·vVvDÆ÷7GÖÒ7V#×¶G·vVvBçVæGÒÆ÷7FÒ6öÆ÷#×´2ç7V66W77Ò&÷&FW$6öÆ÷#Ò'&v&3BÃrÃBÃãR"óà¢Å7FD&÷Æ&VÃÒ$&öGfB"fÇVS×¶G¶&öGfBæ7W'&VçGÒVÒ7V#×¶F÷vâg&öÒG¶&öGfBç7F'GÒVÒ6öÆ÷#×´2æ÷&ævWÒ&÷&FW$6öÆ÷#Ò'&v&#CÃRÃ#"ÃãR"óà¢Å7FD&÷Æ&VÃÒ$fB'W&æVB"fÇVS×¶ÒG¶fDÖ72ç7F'BÒfDÖ72æ7W'&VçGÖÒ7V#Ò&Æ'2'W&æVB"6öÆ÷#×´2æFævW'Ò&÷&FW$6öÆ÷#Ò'&v&#3ÃcÃcÃãR"óà¢Å7FD&÷Æ&VÃÒ$×W66ÆRÖ72"fÇVS×¶×W66ÆRæ7W'&VçGÒ7V#×¶²G¶×W66ÆRæ7W'&VçBÒ×W66ÆRç7F'GÒG¶×W66ÆRçVæGÖÒ6öÆ÷#×´2çW'ÆWÒ&÷&FW$6öÆ÷#Ò'&v&cÃRÃ#CrÃãR"óà¢Å7FD&÷Æ&VÃÒ%F6·2FöæR"fÇVS×¶G·F6µ7FG2æÆÃòæFöæRÇÂÒòG·F6µ7FG2æÆÃòçF÷FÂÇÂÖÒ7V#×¶G·F6µ7FG2æÆÃòç7BÇÂÒR6ö×ÆWFVÒ6öÆ÷#×´2æ66VçGÒ&÷&FW$6öÆ÷#Ò'&v&SbÃÃ#CÃãR"óà¢ÂöFcà ¢²ò¢)Y)Y)YTÅD4T5Dôâ)Y)Y)Y¢÷Ð¢²7FfUF"ÓÓÒ&ÆÂ"ÇÂ7FfUF"ÓÓÒ&VÇF"bb¢ÆFb7GÆS×·²F7Æ¢&w&B"Âw&EFV×ÆFT6öÇVÖç3¢'&WVBWFòÖfBÂÖæÖCÂg""Âv¢#ÂÖ&vä&÷GFöÓ¢#B×Óà ¢²ò¢vVvBÆ÷72¦÷W&æW¢÷Ð¢Ä6&BvÆ÷sà¢Å6V7FöåFFÆRVÖö¦Ò%ÇS#ceÇTdSb#åvVvBÆ÷72¦÷W&æWÂõ6V7FöåFFÆSà¢ÆFb7GÆS×·²F7Æ¢&fÆW"Â§W7Fg6öçFVçC¢'76RÖ&÷VæB"ÂÖ&vä&÷GFöÓ¢#×Óà¢µ°¢²Æ&VÃ¢%7F'FVB"ÂfÃ¢vVvBç7F'BÂ6öÆ÷#¢2æFævW"ÒÀ¢²Æ&VÃ¢$7W'&VçB"ÂfÃ¢vVvBæ7W'&VçBÂ6öÆ÷#¢2æ66VçBÂVFF&ÆS¢G'VRÒÀ¢²Æ&VÃ¢$vöÂ"ÂfÃ¢vVvBævöÂÂ6öÆ÷#¢2ç7V66W72ÒÀ¢ÒæÖFVÒÓâ¢ÆFb¶W×¶FVÒæÆ&VÇÒ7GÆS×·²FWDÆvã¢&6VçFW""×Óà¢ÆFb7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2æ×WFVBÂFWEG&ç6f÷&Ó¢'WW&66R"ÂÆWGFW%76æs¢#ãVÒ"ÂföçEvVvC¢c×Óç¶FVÒæÆ&VÇÓÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢#bÂföçEvVvC¢Â6öÆ÷#¢FVÒæ6öÆ÷"ÂÖ&våF÷¢B×Óà¢¶FVÒæVFF&ÆRò¢ÄVFF&ÆUfÇVRfÇVS×¶FVÒçfÇÒ6öÆ÷#×¶FVÒæ6öÆ÷'Òöå6fS×²bÓâ6WEvVvBÓâ²ââçÂ7W'&VçC¢bÒÒóà¢¢FVÒçfÇÐ¢ÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2æ×WFVB×Óç·vVvBçVæGÓÂöFcà¢ÂöFcà¢Ð¢ÂöFcà¢Å&öw&W74&"fÇVS×·vVvDÆ÷7GÒÖ×·vVvEF÷FÅFôÆ÷6WÒ6öÆ÷#×´2ç7V66W77ÒVvC×³GÒóà¢ÆFb7GÆS×·²F7Æ¢&fÆW"Â§W7Fg6öçFVçC¢'76RÖ&WGvVVâ"ÂÖ&våF÷¢bÂföçE6¦S¢"×Óà¢Ç7â7GÆS×·²6öÆ÷#¢2ç7V66W72ÂföçEvVvC¢c×ÓäÆ÷7C¢·vVvDÆ÷7GÒ·vVvBçVæGÒÇW³c3ÓÂ÷7ãà¢Ç7â7GÆS×·²6öÆ÷#¢2æ×WFVB×ÓåFòvó¢·vVvEFôv÷Ò·vVvBçVæGÓÂ÷7ãà¢ÂöFcà¢ÆFb7GÆS×·°¢Ö&våF÷¢bÂFFæs¢#Gg"ÂFWDÆvã¢&6VçFW""À¢&6¶w&÷VæC¢'&v&3BÃrÃBÃã"Â&÷&FW%&FW3¢BÂ&÷&FW#¢#6öÆB&v&3BÃrÃBÃãR"À¢×Óà¢Ç7â7GÆS×·²föçE6¦S¢3ÂföçEvVvC¢Â6öÆ÷#¢2ç7V66W72×Óç·vVvE7GÒSÂ÷7ãà¢Ç7â7GÆS×·²föçE6¦S¢2Â6öÆ÷#¢2æ×WFVBÂÖ&väÆVgC¢×ÓæöbFRvFW&RÂ÷7ãà¢ÂöFcà ¢²ò¢&öGfB¢÷Ð¢ÆFb7GÆS×·²Ö&våF÷¢#BÂFFæuF÷¢#Â&÷&FW%F÷¢6öÆBG´2æ&÷&FW'Ö×Óà¢ÆFb7GÆS×·²F7Æ¢&fÆW"Â§W7Fg6öçFVçC¢'76RÖ&WGvVVâ"ÂÆväFV×3¢&6VçFW""ÂÖ&vä&÷GFöÓ¢"×Óà¢Ç7â7GÆS×·²föçEvVvC¢sÂföçE6¦S¢RÂ6öÆ÷#¢2çFWB×ÓåÇW³cD3Ò&öGfBSÂ÷7ãà¢Ç7â7GÆS×·²föçE6¦S¢"Â6öÆ÷#¢2æ×WFVB×Óà¢ÄVFF&ÆUfÇVRfÇVS×¶&öGfBæ7W'&VçGÒ6öÆ÷#×´2æ66VçGÒföçE6¦S×³GÒöå6fS×²bÓâ6WD&öGfBÓâ²ââçÂ7W'&VçC¢bÒÒóâP¢²"ÇS#"'Ð¢ÄVFF&ÆUfÇVRfÇVS×¶&öGfBævöÇÒ6öÆ÷#×´2ç7V66W77ÒföçE6¦S×³GÒöå6fS×²bÓâ6WD&öGfBÓâ²ââçÂvöÃ¢bÒÒóâP¢Â÷7ãà¢ÂöFcà¢ÆFb7GÆS×·²F7Æ¢&fÆW"Â§W7Fg6öçFVçC¢'76RÖ&÷VæB"ÂÖ&vä&÷GFöÓ¢×Óà¢µ°¢²Æ&VÃ¢%7F'FVB"ÂfÃ¢G¶&öGfBç7F'GÒVÂ6öÆ÷#¢2æFævW"ÒÀ¢²Æ&VÃ¢$7W'&VçB"ÂfÃ¢G¶&öGfBæ7W'&VçGÒVÂ6öÆ÷#¢2æ÷&ævRÒÀ¢²Æ&VÃ¢$vöÂ"ÂfÃ¢G¶&öGfBævöÂÇÂWÒVÂ6öÆ÷#¢2ç7V66W72ÒÀ¢ÒæÖÓâ¢ÆFb¶W×·æÆ&VÇÒ7GÆS×·²FWDÆvã¢&6VçFW""×Óà¢ÆFb7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2æ×WFVBÂFWEG&ç6f÷&Ó¢'WW&66R"ÂÆWGFW%76æs¢#ãVÒ"ÂföçEvVvC¢c×Óç·æÆ&VÇÓÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢#ÂföçEvVvC¢Â6öÆ÷#¢æ6öÆ÷"×Óç·çfÇÓÂöFcà¢ÂöFcà¢Ð¢ÂöFcà¢²Óâ°¢6öç7BÆ÷7BÒ&öGfBç7F'BÒ&öGfBæ7W'&VçC°¢6öç7BF÷FÂÒ&öGfBç7F'BÒ&öGfBævöÂÇÂR°¢6öç7B7BÒF÷FÂâòÖFç&÷VæBÆ÷7BòF÷FÂ¢¢°¢&WGW&â¢Ãà¢Å&öw&W74&"fÇVS×´ÖFæÖÂÆ÷7BÒÖ×´ÖFæÖÂF÷FÂÒ6öÆ÷#×´2æ÷&ævWÒVvC×³Òóà¢ÆFb7GÆS×·²F7Æ¢&fÆW"Â§W7Fg6öçFVçC¢'76RÖ&WGvVVâ"ÂÖ&våF÷¢BÂföçE6¦S¢×Óà¢Ç7â7GÆS×·²6öÆ÷#¢2æ÷&ævRÂföçEvVvC¢c×ÓäG&÷VC¢¶Æ÷7GÒRÇW³cS#WÓÂ÷7ãà¢Ç7â7GÆS×·²6öÆ÷#¢2æ×WFVB×ÓåFòvó¢¶&öGfBæ7W'&VçBÒ&öGfBævöÂÇÂRÒSÂ÷7ãà¢ÂöFcà¢ÆFb7GÆS×·²Ö&våF÷¢ÂFFæs¢#'"Â&6¶w&÷VæC¢'&v&#CÃRÃ#"Ãã"Â&÷&FW%&FW3¢Â&÷&FW#¢#6öÆB&v&#CÃRÃ#"ÃãR"ÂFWDÆvã¢&6VçFW""×Óà¢Ç7â7GÆS×·²föçE6¦S¢#"ÂföçEvVvC¢Â6öÆ÷#¢2æ÷&ævR×Óç·7GÒSÂ÷7ãà¢Ç7â7GÆS×·²föçE6¦S¢"Â6öÆ÷#¢2æ×WFVBÂÖ&väÆVgC¢b×ÓæöbfBÆ÷72vöÃÂ÷7ãà¢ÂöFcà¢Âóà¢°¢ÒÐ¢ÂöFcà ¢²ò¢fBÖ72¢÷Ð¢ÆFb7GÆS×·²Ö&våF÷¢#BÂFFæuF÷¢#Â&÷&FW%F÷¢6öÆBG´2æ&÷&FW'Ö×Óà¢ÆFb7GÆS×·²F7Æ¢&fÆW"Â§W7Fg6öçFVçC¢'76RÖ&WGvVVâ"ÂÆväFV×3¢&6VçFW""ÂÖ&vä&÷GFöÓ¢"×Óà¢Ç7â7GÆS×·²föçEvVvC¢sÂföçE6¦S¢RÂ6öÆ÷#¢2çFWB×ÓåÇW³cS#WÒfBÆ÷72Æ'2Â÷7ãà¢Ç7â7GÆS×·²föçE6¦S¢"Â6öÆ÷#¢2æ×WFVB×Óà¢ÄVFF&ÆUfÇVRfÇVS×¶fDÖ72æ7W'&VçGÒ6öÆ÷#×´2æ66VçGÒföçE6¦S×³GÒöå6fS×²bÓâ6WDfDÖ72Óâ²ââçÂ7W'&VçC¢bÒÒóà¢²"ÇS#"'Ð¢ÄVFF&ÆUfÇVRfÇVS×¶fDÖ72ævöÇÒ6öÆ÷#×´2ç7V66W77ÒföçE6¦S×³GÒöå6fS×²bÓâ6WDfDÖ72Óâ²ââçÂvöÃ¢bÒÒóâÆ'0¢Â÷7ãà¢ÂöFcà¢ÆFb7GÆS×·²F7Æ¢&fÆW"Â§W7Fg6öçFVçC¢'76RÖ&÷VæB"ÂÖ&vä&÷GFöÓ¢×Óà¢µ°¢²Æ&VÃ¢%7F'FVB"ÂfÃ¢fDÖ72ç7F'BÂ6öÆ÷#¢2æFævW"ÒÀ¢²Æ&VÃ¢$7W'&VçB"ÂfÃ¢fDÖ72æ7W'&VçBÂ6öÆ÷#¢2æFævW"ÒÀ¢²Æ&VÃ¢$vöÂ"ÂfÃ¢fDÖ72ævöÂÂ6öÆ÷#¢2ç7V66W72ÒÀ¢ÒæÖÓâ¢ÆFb¶W×·æÆ&VÇÒ7GÆS×·²FWDÆvã¢&6VçFW""×Óà¢ÆFb7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2æ×WFVBÂFWEG&ç6f÷&Ó¢'WW&66R"ÂÆWGFW%76æs¢#ãVÒ"ÂföçEvVvC¢c×Óç·æÆ&VÇÓÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢#ÂföçEvVvC¢Â6öÆ÷#¢æ6öÆ÷"×Óç·çfÇÓÂöFcà¢ÆFb7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2æ×WFVB×ÓæÆ'3ÂöFcà¢ÂöFcà¢Ð¢ÂöFcà¢²Óâ°¢6öç7BÆ÷7BÒfDÖ72ç7F'BÒfDÖ72æ7W'&VçC°¢6öç7BF÷FÂÒfDÖ72ç7F'BÒfDÖ72ævöÃ°¢6öç7B7BÒF÷FÂâòÖFç&÷VæBÆ÷7BòF÷FÂ¢¢°¢&WGW&â¢Ãà¢Å&öw&W74&"fÇVS×´ÖFæÖÂÆ÷7BÒÖ×´ÖFæÖÂF÷FÂÒ6öÆ÷#×´2æFævW'ÒVvC×³Òóà¢ÆFb7GÆS×·²F7Æ¢&fÆW"Â§W7Fg6öçFVçC¢'76RÖ&WGvVVâ"ÂÖ&våF÷¢BÂföçE6¦S¢×Óà¢Ç7â7GÆS×·²6öÆ÷#¢2ç7V66W72ÂföçEvVvC¢c×ÓäÆ÷7C¢¶Æ÷7GÒÆ'2ÇW³cDÓÂ÷7ãà¢Ç7â7GÆS×·²6öÆ÷#¢2æ×WFVB×ÓåFòvó¢¶fDÖ72æ7W'&VçBÒfDÖ72ævöÇÒÆ'3Â÷7ãà¢ÂöFcà¢ÆFb7GÆS×·²Ö&våF÷¢ÂFFæs¢#'"Â&6¶w&÷VæC¢'&v&#3ÃcÃcÃã"Â&÷&FW%&FW3¢Â&÷&FW#¢#6öÆB&v&#3ÃcÃcÃãR"ÂFWDÆvã¢&6VçFW""×Óà¢Ç7â7GÆS×·²föçE6¦S¢#"ÂföçEvVvC¢Â6öÆ÷#¢2æFævW"×Óç·7GÒSÂ÷7ãà¢Ç7â7GÆS×·²föçE6¦S¢"Â6öÆ÷#¢2æ×WFVBÂÖ&väÆVgC¢b×ÓæöbfB'W&æVCÂ÷7ãà¢ÂöFcà¢Âóà¢°¢ÒÐ¢ÂöFcà¢Âô6&Cà ¢²ò¢fFæW72vöÇ2¢÷Ð¢Ä6&Cà¢Å6V7FöåFFÆRVÖö¦Ò%ÇW³c44'ÕÇTdSb"7V#Ò%6²öæRFò6Ö6FöFÇS#BF6²BöfbÂFVâWFFR÷W"&öw&W72#äfFæW72vöÇ3Âõ6V7FöåFFÆSà¢ÆFb7GÆS×·²F7Æ¢&fÆW"ÂfÆWF&V7Föã¢&6öÇVÖâ"Âv¢×Óà¢¶fFæW74vöÇ2æÖvöÂÓâ°¢6öç7B7BÒvöÂævöÂâòÖFç&÷VæBvöÂæ7W'&VçBòvöÂævöÂ¢¢°¢&WGW&â¢ÆFb¶W×¶vöÂæGÒ7GÆS×·°¢FFæs¢#Gg"Â&÷&FW%&FW3¢BÀ¢&6¶w&÷VæC¢vöÂæFöæUFöFò'&v&3BÃrÃBÃã"¢'&v&#SRÃ#SRÃ#SRÃã2"À¢&÷&FW#¢vöÂæFöæUFöFò#6öÆB&v&3BÃrÃBÃã""¢6öÆBG´2æ&÷&FW'ÖÀ¢G&ç6Föã¢&ÆÂã#W2V6R"À¢×Óà¢ÆFb7GÆS×·²F7Æ¢&fÆW"ÂÆväFV×3¢&6VçFW""Âv¢"ÂÖ&vä&÷GFöÓ¢×Óà¢ÆFböä6Æ6³×²ÓâFövvÆTfFæW75FöFvöÂæBÒ7GÆS×·°¢vGF¢#ÂVvC¢#Â&÷&FW%&FW3¢ÂfÆW6&æ³¢À¢&÷&FW#¢vöÂæFöæUFöFò&æöæR"¢'6öÆBG´2æ&÷&FW$ÆvGÖÀ¢&6¶w&÷VæC¢vöÂæFöæUFöFò2ç7V66W72¢'G&ç7&VçB"À¢7W'6÷#¢'öçFW""ÂF7Æ¢&fÆW"ÂÆväFV×3¢&6VçFW""Â§W7Fg6öçFVçC¢&6VçFW""À¢föçE6¦S¢BÂ6öÆ÷#¢"6ffb"ÂG&ç6Föã¢&ÆÂã'2"À¢&÷6F÷s¢vöÂæFöæUFöFò#'&v&3BÃrÃBÃã2"¢&æöæR"À¢×Óà¢¶vöÂæFöæUFöFbb%ÇS#s2'Ð¢ÂöFcà¢Ç7â7GÆS×·²föçEvVvC¢sÂföçE6¦S¢RÂfÆW¢Â6öÆ÷#¢vöÂæFöæUFöFò2ç7V66W72¢2çFWB×Óà¢¶vöÂæ6öçÒ¶vöÂææÖWÐ¢Â÷7ãà¢Ç7â7GÆS×·°¢föçE6¦S¢Â6öÆ÷#¢vöÂæFöæUFöFò2ç7V66W72¢2æ×WFVBÀ¢föçEvVvC¢sÂFWEG&ç6f÷&Ó¢'WW&66R"ÂÆWGFW%76æs¢#ãVÒ"À¢FFæs¢#7"Â&÷&FW%&FW3¢bÀ¢&6¶w&÷VæC¢vöÂæFöæUFöFò'&v&3BÃrÃBÃãR"¢'&v&#SRÃ#SRÃ#SRÃãB"À¢×Óà¢¶vöÂæFöæUFöFò$FöæR"¢%FöFò'Ð¢Â÷7ãà¢ÂöFcà¢ÆFb7GÆS×·²F7Æ¢&fÆW"ÂÆväFV×3¢&6VçFW""Âv¢×Óà¢ÆFb7GÆS×·²fÆW¢×Óà¢Å&öw&W74&"fÇVS×¶vöÂæ7W'&VçGÒÖ×¶vöÂævöÇÒ6öÆ÷#×¶vöÂæFöæUFöFò2ç7V66W72¢2æ66VçGÒVvC×³gÒ6÷tÆ&VÃ×¶fÇ6WÒóà¢ÂöFcà¢Ç7â7GÆS×·²föçE6¦S¢Â6öÆ÷#¢2æ×WFVBÂÖåvGF¢RÂFWDÆvã¢'&vB"ÂföçEf&çDçVÖW&3¢'F'VÆ"ÖçV×2"×Óà¢¶VFFætvöÂÓÓÒvöÂæBò¢ÆçWBGSÒ&çVÖ&W""FVfVÇEfÇVS×¶vöÂæ7W'&VçGÐ¢öä&ÇW#×²RÓâ²WFFTvöÄ7W'&VçBvöÂæBÂRçF&vWBçfÇVR²6WDVFFætvöÂçVÆÂ²×Ð¢öä¶WF÷vã×²RÓâ²bRæ¶WÓÓÒ$VçFW""²WFFTvöÄ7W'&VçBvöÂæBÂRçF&vWBçfÇVR²6WDVFFætvöÂçVÆÂ²Ò×Ð¢WFôfö7W0¢7GÆS×·²vGF¢CRÂ&6¶w&÷VæC¢'&v&#SRÃ#SRÃ#SRÃãR"Â&÷&FW#¢6öÆBG´2æ66VçGÖÂ&÷&FW%&FW3¢bÂ6öÆ÷#¢2çFWBÂföçE6¦S¢ÂFWDÆvã¢&6VçFW""ÂFFæs¢#'"Â÷WFÆæS¢&æöæR"×Ð¢      />
+                          ) : (
+                            <span onClick={() => setEditingGoal(goal.id)} style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.2)" }} title="Click to update">
+                              {goal.current}
+                            </span>
+                          )} / {goal.goal} {goal.unit}
+                        </span>
                       </div>
-                      <div style={{ fontSize: 11, color: COLORS.muted }}>
-                        {Math.round(weather.daily.temperature_2m_min[i])}Â°
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.muted, marginTop: 4 }}>
+                        <span>Started: {goal.start} {goal.unit}</span>
+                        <span>{pct}% to goal</span>
                       </div>
-                      {weather.daily.precipitation_probability_max[i] > 0 && (
-                        <div style={{ fontSize: 10, color: COLORS.accent, marginTop: 2 }}>
-                          ð§ {weather.daily.precipitation_probability_max[i]}%
-                        </div>
-                      )}
                     </div>
                   );
                 })}
               </div>
-            </div>
-          </Card>
-        )}
-        {(activeTab === "all") && !weather && !weatherError && (
-          <Card style={{ marginBottom: 24, textAlign: "center" }}>
-            <span style={{ color: COLORS.muted, fontSize: 14 }}>ð¤ï¸ Loading weather...</span>
-          </Card>
-        )}
-        {(activeTab === "all") && weatherError && (
-          <Card style={{ marginBottom: 24, textAlign: "center" }}>
-            <span style={{ color: COLORS.muted, fontSize: 14 }}>ð¤ï¸ Weather unavailable â check your connection</span>
-          </Card>
-        )}
-
-        {/* âââ SUMMARY BOXES âââ */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 16, marginBottom: 24 }}>
-          {/* Sober Days */}
-          {(() => {
-            const soberDate = new Date(2025, 10, 5); // Nov 5, 2025
-            const today = new Date();
-            const diffMs = today - soberDate;
-            const soberDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            const soberMonths = Math.floor(soberDays / 30);
-            return (
               <div style={{
-                background: "linear-gradient(135deg, #1E293B, #0D3320)", borderRadius: 14, padding: "18px 16px", textAlign: "center",
-                border: "1px solid rgba(34,197,94,0.3)", boxShadow: "0 2px 12px rgba(34,197,94,0.1)",
+                marginTop: 12, padding: "10px 14px",
+                background: fitnessGoals.some((g) => g.doneToday) ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.02)",
+                borderRadius: 12, border: fitnessGoals.some((g) => g.doneToday) ? "1px solid rgba(34,197,94,0.15)" : `1px solid ${C.border}`,
+                textAlign: "center",
               }}>
-                <div style={{ fontSize: 11, color: COLORS.success, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Sober Days</div>
-                <div style={{ fontSize: 30, fontWeight: 800, color: COLORS.success }}>{soberDays}</div>
-                <div style={{ fontSize: 12, color: COLORS.success }}>~{soberMonths} months ð</div>
-              </div>
-            );
-          })()}
-
-          {/* Current Weight */}
-          <div style={{
-            background: COLORS.card, borderRadius: 14, padding: "18px 16px", textAlign: "center",
-            border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-          }}>
-            <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Current Weight</div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: COLORS.accent }}>{weight.current}</div>
-            <div style={{ fontSize: 12, color: COLORS.muted }}>{weight.unit}</div>
-          </div>
-
-          {/* Weight Lost */}
-          <div style={{
-            background: COLORS.card, borderRadius: 14, padding: "18px 16px", textAlign: "center",
-            border: "1px solid rgba(34,197,94,0.15)", boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-          }}>
-            <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Weight Lost</div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: COLORS.success }}>-{weightLost}</div>
-            <div style={{ fontSize: 12, color: COLORS.success }}>{weight.unit} lost</div>
-          </div>
-
-          {/* Fat Lost */}
-          <div style={{
-            background: COLORS.card, borderRadius: 14, padding: "18px 16px", textAlign: "center",
-            border: "1px solid rgba(249,115,22,0.15)", boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-          }}>
-            <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Body Fat</div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: "#F97316" }}>
-              {editingSummary === "fat" ? (
-                <input
-                  type="number"
-                  value={tempSummaryVal}
-                  onChange={(e) => setTempSummaryVal(e.target.value)}
-                  onBlur={() => { setBodyFat((p) => ({ ...p, current: Number(tempSummaryVal) || p.current })); setEditingSummary(null); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") { setBodyFat((p) => ({ ...p, current: Number(tempSummaryVal) || p.current })); setEditingSummary(null); } }}
-                  autoFocus
-                  style={{ width: 60, background: COLORS.cardAlt, border: `1px solid #F97316`, borderRadius: 8, color: COLORS.text, fontSize: 26, textAlign: "center", padding: "2px", fontWeight: 800 }}
-                />
-              ) : (
-                <span
-                  onClick={() => { setEditingSummary("fat"); setTempSummaryVal(String(bodyFat.current)); }}
-                  style={{ cursor: "pointer", borderBottom: "2px dashed rgba(255,255,255,0.15)" }}
-                  title="Click to update"
-                >
-                  {bodyFat.current}{bodyFat.unit}
-                </span>
-              )}
-            </div>
-            <div style={{ fontSize: 12, color: COLORS.muted }}>down from {bodyFat.start}%</div>
-          </div>
-
-          {/* Fat Mass */}
-          <div style={{
-            background: COLORS.card, borderRadius: 14, padding: "18px 16px", textAlign: "center",
-            border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-          }}>
-            <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Fat Mass</div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: COLORS.accent }}>{fatMass.current}</div>
-            <div style={{ fontSize: 12, color: COLORS.success }}>-{fatMass.start - fatMass.current} lbs</div>
-          </div>
-
-          {/* Muscle */}
-          <div style={{
-            background: COLORS.card, borderRadius: 14, padding: "18px 16px", textAlign: "center",
-            border: "1px solid rgba(139,92,246,0.15)", boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-          }}>
-            <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Muscle</div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: "#8B5CF6" }}>{editingSummary === "muscle" ? (
-                <input
-                  type="number"
-                  value={tempSummaryVal}
-                  onChange={(e) => setTempSummaryVal(e.target.value)}
-                  onBlur={() => { setMuscle((p) => ({ ...p, current: Number(tempSummaryVal) || p.current })); setEditingSummary(null); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") { setMuscle((p) => ({ ...p, current: Number(tempSummaryVal) || p.current })); setEditingSummary(null); } }}
-                  autoFocus
-                  style={{ width: 60, background: COLORS.cardAlt, border: `1px solid #A855F7`, borderRadius: 8, color: COLORS.text, fontSize: 26, textAlign: "center", padding: "2px", fontWeight: 800 }}
-                />
-              ) : (
-                <span
-                  onClick={() => { setEditingSummary("muscle"); setTempSummaryVal(String(muscle.current)); }}
-                  style={{ cursor: "pointer", borderBottom: "2px dashed rgba(255,255,255,0.15)" }}
-                  title="Click to update"
-                >
-                  {muscle.current}
-                </span>
-              )}
-            </div>
-            <div style={{ fontSize: 12, color: "#A855F7" }}>+{muscle.current - muscle.start} {muscle.unit} gained</div>
-          </div>
-
-          {/* Tasks Done */}
-          <div style={{
-            background: COLORS.card, borderRadius: 14, padding: "18px 16px", textAlign: "center",
-            border: "1px solid rgba(56,189,248,0.15)", boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-          }}>
-            <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Tasks Done</div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: COLORS.accent }}>{taskStats.all?.done || 0}/{taskStats.all?.total || 0}</div>
-            <div style={{ fontSize: 12, color: COLORS.accent }}>{taskStats.all?.pct || 0}% complete</div>
-          </div>
-        </div>
-
-        {/* âââ ROW 1: Weight + Fitness Goals (All + Health) âââ */}
-        {(activeTab === "all" || activeTab === "health") && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 24 }}>
-          {/* Weight Loss Card */}
-          <Card>
-            <SectionTitle emoji="âï¸">Weight Loss Journey</SectionTitle>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Started</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.danger }}>{weight.start}</div>
-                <div style={{ fontSize: 12, color: COLORS.muted }}>{weight.unit}</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Current</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.accent }}>
-                  {editingWeight ? (
-                    <input
-                      type="number"
-                      value={tempWeight}
-                      onChange={(e) => setTempWeight(e.target.value)}
-                      onBlur={updateCurrentWeight}
-                      onKeyDown={(e) => e.key === "Enter" && updateCurrentWeight()}
-                      autoFocus
-                      style={{
-                        width: 80, background: COLORS.cardAlt, border: `1px solid ${COLORS.accent}`,
-                        borderRadius: 8, color: COLORS.text, fontSize: 24, textAlign: "center",
-                        padding: "2px 4px", fontWeight: 800,
-                      }}
-                    />
-                  ) : (
-                    <span
-                      onClick={() => { setEditingWeight(true); setTempWeight(String(weight.current)); }}
-                      style={{ cursor: "pointer", borderBottom: "2px dashed rgba(255,255,255,0.2)" }}
-                      title="Click to update"
-                    >
-                      {weight.current}
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 12, color: COLORS.muted }}>{weight.unit}</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Goal</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.success }}>{weight.goal}</div>
-                <div style={{ fontSize: 12, color: COLORS.muted }}>{weight.unit}</div>
-              </div>
-            </div>
-            <ProgressBar value={weightLost} max={weightTotalToLose} color={COLORS.success} height={16} />
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 13 }}>
-              <span style={{ color: COLORS.success }}>Lost: {weightLost} {weight.unit} ð</span>
-              <span style={{ color: COLORS.muted }}>To go: {weightToGo} {weight.unit}</span>
-            </div>
-            <div style={{
-              marginTop: 16, padding: "12px 16px", background: "rgba(34,197,94,0.1)",
-              borderRadius: 10, border: "1px solid rgba(34,197,94,0.2)", textAlign: "center",
-            }}>
-              <span style={{ fontSize: 32, fontWeight: 800, color: COLORS.success }}>{weightPct}%</span>
-              <span style={{ fontSize: 14, color: COLORS.muted, marginLeft: 8 }}>of the way there!</span>
-            </div>
-
-            {/* Body Fat Progress */}
-            <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <span style={{ fontWeight: 700, fontSize: 16, color: COLORS.text }}>ð Body Fat %</span>
-                <span style={{ fontSize: 13, color: COLORS.muted }}>
-                  {editingSummary === "fatGoal" ? (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <span
-                        onClick={() => { setEditingSummary("fatCurrent"); setTempSummaryVal(String(bodyFat.current)); }}
-                        style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.3)", color: COLORS.accent, fontWeight: 700 }}
-                      >{bodyFat.current}%</span>
-                      {" â "}
-                      <input
-                        type="number"
-                        value={tempSummaryVal}
-                        onChange={(e) => setTempSummaryVal(e.target.value)}
-                        onBlur={() => { setBodyFat((p) => ({ ...p, goal: Number(tempSummaryVal) || p.goal })); setEditingSummary(null); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { setBodyFat((p) => ({ ...p, goal: Number(tempSummaryVal) || p.goal })); setEditingSummary(null); } }}
-                        autoFocus
-                        style={{ width: 45, background: COLORS.cardAlt, border: `1px solid #F97316`, borderRadius: 6, color: COLORS.text, fontSize: 13, textAlign: "center", padding: "2px" }}
-                      />%
-                    </span>
-                  ) : editingSummary === "fatCurrent" ? (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <input
-                        type="number"
-                        value={tempSummaryVal}
-                        onChange={(e) => setTempSummaryVal(e.target.value)}
-                        onBlur={() => { setBodyFat((p) => ({ ...p, current: Number(tempSummaryVal) || p.current })); setEditingSummary(null); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { setBodyFat((p) => ({ ...p, current: Number(tempSummaryVal) || p.current })); setEditingSummary(null); } }}
-                        autoFocus
-                        style={{ width: 45, background: COLORS.cardAlt, border: `1px solid ${COLORS.accent}`, borderRadius: 6, color: COLORS.text, fontSize: 13, textAlign: "center", padding: "2px" }}
-                      />%
-                      {" â "}
-                      <span
-                        onClick={() => { setEditingSummary("fatGoal"); setTempSummaryVal(String(bodyFat.goal || 15)); }}
-                        style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.3)", color: COLORS.success }}
-                      >{bodyFat.goal || 15}%</span>
-                    </span>
-                  ) : (
-                    <span>
-                      <span
-                        onClick={() => { setEditingSummary("fatCurrent"); setTempSummaryVal(String(bodyFat.current)); }}
-                        style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.3)", color: COLORS.accent, fontWeight: 700 }}
-                        title="Click to update"
-                      >{bodyFat.current}%</span>
-                      {" â "}
-                      <span
-                        onClick={() => { setEditingSummary("fatGoal"); setTempSummaryVal(String(bodyFat.goal || 15)); }}
-                        style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.3)", color: COLORS.success }}
-                        title="Click to update goal"
-                      >{bodyFat.goal || 15}%</span>
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Started</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.danger }}>{bodyFat.start}%</div>
-                </div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Current</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "#F97316" }}>{bodyFat.current}%</div>
-                </div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Goal</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.success }}>{bodyFat.goal || 15}%</div>
-                </div>
-              </div>
-              {(() => {
-                const fatLost = bodyFat.start - bodyFat.current;
-                const fatTotal = bodyFat.start - (bodyFat.goal || 15);
-                const fatPct = fatTotal > 0 ? Math.round((fatLost / fatTotal) * 100) : 0;
-                return (
-                  <>
-                    <ProgressBar value={Math.max(0, fatLost)} max={Math.max(1, fatTotal)} color="#F97316" height={12} />
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 12 }}>
-                      <span style={{ color: "#F97316" }}>Dropped: {fatLost}% ð¥</span>
-                      <span style={{ color: COLORS.muted }}>To go: {bodyFat.current - (bodyFat.goal || 15)}%</span>
-                    </div>
-                    <div style={{
-                      marginTop: 10, padding: "8px 12px", background: "rgba(249,115,22,0.1)",
-                      borderRadius: 8, border: "1px solid rgba(249,115,22,0.2)", textAlign: "center",
-                    }}>
-                      <span style={{ fontSize: 24, fontWeight: 800, color: "#F97316" }}>{fatPct}%</span>
-                      <span style={{ fontSize: 13, color: COLORS.muted, marginLeft: 6 }}>of fat loss goal</span>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-
-            {/* Fat Loss (lbs) */}
-            <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <span style={{ fontWeight: 700, fontSize: 16, color: COLORS.text }}>ð¥ Fat Loss (lbs)</span>
-                <span style={{ fontSize: 13, color: COLORS.muted }}>
-                  <span
-                    onClick={() => { setEditingSummary("fatMassCurrent"); setTempSummaryVal(String(fatMass.current)); }}
-                    style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.3)", color: COLORS.accent, fontWeight: 700 }}
-                    title="Click to update"
-                  >
-                    {editingSummary === "fatMassCurrent" ? (
-                      <input
-                        type="number"
-                        value={tempSummaryVal}
-                        onChange={(e) => setTempSummaryVal(e.target.value)}
-                        onBlur={() => { setFatMass((p) => ({ ...p, current: Number(tempSummaryVal) || p.current })); setEditingSummary(null); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { setFatMass((p) => ({ ...p, current: Number(tempSummaryVal) || p.current })); setEditingSummary(null); } }}
-                        autoFocus
-                        style={{ width: 45, background: COLORS.cardAlt, border: `1px solid ${COLORS.accent}`, borderRadius: 6, color: COLORS.text, fontSize: 13, textAlign: "center", padding: "2px" }}
-                      />
-                    ) : fatMass.current}
+                {fitnessGoals.some((g) => g.doneToday) ? (
+                  <span style={{ fontSize: 13, color: C.success, fontWeight: 700 }}>
+                    \u{1F525} {fitnessGoals.filter((g) => g.doneToday).map((g) => g.name).join(" + ")} done today!
                   </span>
-                  {" â "}
-                  <span
-                    onClick={() => { setEditingSummary("fatMassGoal"); setTempSummaryVal(String(fatMass.goal)); }}
-                    style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.3)", color: COLORS.success }}
-                    title="Click to update goal"
-                  >
-                    {editingSummary === "fatMassGoal" ? (
-                      <input
-                        type="number"
-                        value={tempSummaryVal}
-                        onChange={(e) => setTempSummaryVal(e.target.value)}
-                        onBlur={() => { setFatMass((p) => ({ ...p, goal: Number(tempSummaryVal) || p.goal })); setEditingSummary(null); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { setFatMass((p) => ({ ...p, goal: Number(tempSummaryVal) || p.goal })); setEditingSummary(null); } }}
-                        autoFocus
-                        style={{ width: 45, background: COLORS.cardAlt, border: `1px solid ${COLORS.success}`, borderRadius: 6, color: COLORS.text, fontSize: 13, textAlign: "center", padding: "2px" }}
-                      />
-                    ) : fatMass.goal}
-                  </span> lbs
-                </span>
+                ) : (
+                  <span style={{ fontSize: 13, color: C.muted }}>Pick an activity for today \u261D\uFE0F</span>
+                )}
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Started</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.danger }}>{fatMass.start}</div>
-                  <div style={{ fontSize: 11, color: COLORS.muted }}>lbs</div>
-                </div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Current</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "#EF4444" }}>{fatMass.current}</div>
-                  <div style={{ fontSize: 11, color: COLORS.muted }}>lbs</div>
-                </div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Goal</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.success }}>{fatMass.goal}</div>
-                  <div style={{ fontSize: 11, color: COLORS.muted }}>lbs</div>
-                </div>
+            </Card>
+          </div>
+        )}
+
+        {/* âââ TASKS SECTION âââ */}
+        {(activeTab === "all" || activeTab === "tasks") && (
+          <>
+            {/* Add task bar */}
+            <Card style={{ marginBottom: 20, padding: "16px 20px" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <select value={newTaskCat} onChange={(e) => setNewTaskCat(e.target.value)} style={{
+                  background: "rgba(255,255,255,0.05)", color: C.text, border: `1px solid ${C.border}`,
+                  borderRadius: 10, padding: "10px 14px", fontSize: 13, cursor: "pointer", outline: "none",
+                }}>
+                  {["work", "diet", "family", "personal"].map((c) => (
+                    <option key={c} value={c}>{catEmoji[c]} {catLabel[c]}</option>
+                  ))}
+                </select>
+                <input value={newTask} onChange={(e) => setNewTask(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addTask()}
+                  placeholder="Add a new task..."
+                  style={{
+                    flex: 1, minWidth: 200, background: "rgba(255,255,255,0.05)", color: C.text,
+                    border: `1px solid ${C.border}`, borderRadius: 10,
+                    padding: "10px 14px", fontSize: 13, outline: "none",
+                    transition: "border-color 0.2s",
+                  }}
+                />
+                <button onClick={addTask} style={{
+                  background: "linear-gradient(135deg, #38BDF8, #818CF8)",
+                  color: "#fff", border: "none", borderRadius: 10,
+                  padding: "10px 22px", fontSize: 13, fontWeight: 700,
+                  cursor: "pointer", boxShadow: "0 2px 12px rgba(56,189,248,0.25)",
+                  transition: "transform 0.15s, box-shadow 0.15s",
+                }}>
+                  + Add
+                </button>
               </div>
-              {(() => {
-                const fatLbs = fatMass.start - fatMass.current;
-                const fatLbsTotal = fatMass.start - fatMass.goal;
-                const fatLbsPct = fatLbsTotal > 0 ? Math.round((fatLbs / fatLbsTotal) * 100) : 0;
+            </Card>
+
+            {/* Task lists */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 24 }}>
+              {["work", "diet", "family", "personal"].map((cat) => {
+                const catTasks = [...tasks.filter((t) => t.category === cat)].sort((a, b) => a.done === b.done ? 0 : a.done ? 1 : -1);
                 return (
-                  <>
-                    <ProgressBar value={Math.max(0, fatLbs)} max={Math.max(1, fatLbsTotal)} color="#EF4444" height={12} />
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 12 }}>
-                      <span style={{ color: COLORS.success }}>Lost: {fatLbs} lbs ðª</span>
-                      <span style={{ color: COLORS.muted }}>To go: {fatMass.current - fatMass.goal} lbs</span>
+                  <Card key={cat} style={{ borderTop: `3px solid ${C[cat] || C.accent}`, padding: "20px 22px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                      <SectionTitle emoji={catEmoji[cat]}>{catLabel[cat]}</SectionTitle>
+                      <span style={{
+                        background: "rgba(255,255,255,0.06)", borderRadius: 20,
+                        padding: "3px 10px", fontSize: 11, color: C.muted, fontWeight: 600,
+                        fontVariantNumeric: "tabular-nums",
+                      }}>
+                        {taskStats[cat]?.done}/{taskStats[cat]?.total}
+                      </span>
                     </div>
-                    <div style={{
-                      marginTop: 10, padding: "8px 12px", background: "rgba(239,68,68,0.1)",
-                      borderRadius: 8, border: "1px solid rgba(239,68,68,0.2)", textAlign: "center",
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {catTasks.length === 0 && (
+                        <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic", textAlign: "center", padding: 20 }}>
+                          No tasks yet
+                        </div>
+                      )}
+                      {catTasks.map((task) => (
+                        <div key={task.id} style={{
+                          display: "flex", alignItems: "center", gap: 10,
+                          padding: "10px 12px", borderRadius: 10,
+                          background: task.done ? "rgba(34,197,94,0.06)" : "rgba(255,255,255,0.03)",
+                          border: task.done ? "1px solid rgba(34,197,94,0.1)" : `1px solid ${C.border}`,
+                          transition: "all 0.2s",
+                        }}>
+                          <div onClick={() => toggleTask(task.id)} style={{
+                            width: 20, height: 20, borderRadius: 6, flexShrink: 0,
+                            border: task.done ? "none" : `2px solid ${C.borderLight}`,
+                            background: task.done ? C.success : "transparent",
+                            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: 11, color: "#fff", transition: "all 0.2s",
+                          }}>
+                            {task.done && "\u2713"}
+                          </div>
+                          <span style={{
+                            flex: 1, fontSize: 13,
+                            textDecoration: task.done ? "line-through" : "none",
+                            color: task.done ? C.muted : C.text,
+                            transition: "color 0.2s",
+                          }}>
+                            {task.text}
+                          </span>
+                          <button onClick={() => deleteTask(task.id)} style={{
+                            background: "none", border: "none", color: "rgba(255,255,255,0.15)",
+                            cursor: "pointer", fontSize: 18, padding: "0 4px", lineHeight: 1,
+                            transition: "color 0.2s",
+                          }}
+                            onMouseEnter={(e) => e.target.style.color = C.danger}
+                            onMouseLeave={(e) => e.target.style.color = "rgba(255,255,255,0.15)"}
+                          >
+                            \u00D7
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Charts row */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, marginBottom: 24 }}>
+              {/* Radar */}
+              <Card>
+                <SectionTitle emoji="\u{1F9ED}" sub="Higher = more attention needed">Focus Radar</SectionTitle>
+                {(() => {
+                  const radarData = ["work", "diet", "family", "personal"].map((cat) => {
+                    const s = taskStats[cat] || { total: 0, done: 0 };
+                    return { category: catLabel[cat], attention: s.total - s.done, fullMark: Math.max(taskStats.all?.total || 1, 1) };
+                  });
+                  const maxAttention = radarData.reduce((a, b) => a.attention > b.attention ? a : b, radarData[0]);
+                  return (
+                    <>
+                      <div style={{ height: 240 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                            <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                            <PolarAngleAxis dataKey="category" tick={{ fill: C.text, fontSize: 11, fontWeight: 600 }} />
+                            <PolarRadiusAxis angle={90} domain={[0, "auto"]} tick={{ fill: C.muted, fontSize: 9 }} axisLine={false} />
+                            <Radar name="Attention" dataKey="attention" stroke={C.accent} fill={C.accent} fillOpacity={0.2} strokeWidth={2} />
+                            <Tooltip contentStyle={{ background: C.cardSolid, border: "none", borderRadius: 10, color: C.text, fontSize: 12 }} />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div style={{ marginTop: 8, padding: "8px 12px", background: "rgba(56,189,248,0.08)", borderRadius: 10, border: "1px solid rgba(56,189,248,0.15)", textAlign: "center" }}>
+                        <span style={{ fontSize: 12, color: C.muted }}>Top priority: </span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: C.accent }}>{maxAttention.category}</span>
+                        <span style={{ fontSize: 12, color: C.muted }}> ({maxAttention.attention} remaining)</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </Card>
+
+              {/* Pie */}
+              <Card>
+                <SectionTitle emoji="\u{1F4CA}">Task Distribution</SectionTitle>
+                <div style={{ height: 280 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={4} dataKey="value" stroke="none"
+                        label={({ name, pct, cx, cy, midAngle, outerRadius: or }) => {
+                          const R = Math.PI / 180;
+                          const rad = or + 22;
+                          const x = cx + rad * Math.cos(-midAngle * R);
+                          const y = cy + rad * Math.sin(-midAngle * R);
+                          return <text x={x} y={y} fill={C.text} textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={12} fontWeight={600}>{name} {pct}%</text>;
+                        }}>
+                        {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ background: C.cardSolid, border: "none", borderRadius: 10, color: C.text, fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Completion Stats */}
+              <Card>
+                <SectionTitle emoji="\u{1F4C8}">Completion Stats</SectionTitle>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                  {["work", "diet", "family", "personal"].map((cat) => (
+                    <div key={cat} style={{
+                      background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 12px", textAlign: "center",
+                      border: `2px solid ${C[cat]}20`, transition: "border-color 0.2s",
                     }}>
-                      <span style={{ fontSize: 24, fontWeight: 800, color: "#EF4444" }}>{fatLbsPct}%</span>
-                      <span style={{ fontSize: 13, color: COLORS.muted, marginLeft: 6 }}>of fat burned</span>
+                      <div style={{ fontSize: 22 }}>{catEmoji[cat]}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginTop: 4 }}>{catLabel[cat]}</div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: C[cat], marginTop: 2 }}>{taskStats[cat]?.pct || 0}%</div>
+                      <div style={{ fontSize: 10, color: C.muted, fontWeight: 500 }}>{taskStats[cat]?.done || 0} / {taskStats[cat]?.total || 0}</div>
                     </div>
-                  </>
+                  ))}
+                </div>
+                <div style={{ padding: "10px 14px", background: "rgba(56,189,248,0.08)", borderRadius: 12, border: "1px solid rgba(56,189,248,0.15)", textAlign: "center" }}>
+                  <span style={{ fontSize: 13, color: C.muted }}>Overall: </span>
+                  <span style={{ fontSize: 22, fontWeight: 900, color: C.accent }}>{taskStats.all?.pct || 0}%</span>
+                  <span style={{ fontSize: 13, color: C.muted }}> ({taskStats.all?.done}/{taskStats.all?.total})</span>
+                </div>
+              </Card>
+            </div>
+          </>
+        )}
+
+        {/* âââ FINANCES âââ */}
+        {(activeTab === "all" || activeTab === "money") && (
+          <Card style={{ marginBottom: 24 }} glow>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 8 }}>
+              <SectionTitle emoji="\u{1F4B0}">Debt Tracker</SectionTitle>
+              {(() => {
+                const totalUsed = debts.reduce((s, d) => s + d.used, 0);
+                const totalLimit = debts.reduce((s, d) => s + d.limit, 0);
+                return (
+                  <span style={{ fontSize: 12, color: C.muted }}>
+                    Total: <span style={{ fontWeight: 800, color: totalUsed > 0 ? C.danger : C.success }}>\u00A3{totalUsed.toLocaleString()}</span>
+                    <span> / \u00A3{totalLimit.toLocaleString()}</span>
+                  </span>
                 );
               })()}
             </div>
-          </Card>
+            <p style={{ fontSize: 11, color: C.muted, margin: "-8px 0 16px 32px" }}>Click any balance to update it</p>
 
-          {/* Fitness Goals Card */}
-          <Card>
-            <SectionTitle emoji="ðï¸">Fitness Goals</SectionTitle>
-            <p style={{ fontSize: 12, color: COLORS.muted, margin: "-8px 0 14px 0" }}>
-              Pick one to smash today â tick it off, then update your progress
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {fitnessGoals.map((goal) => {
-                const pct = goal.goal > 0 ? Math.round((goal.current / goal.goal) * 100) : 0;
+            {/* Overall progress */}
+            {(() => {
+              const totalUsed = debts.reduce((s, d) => s + d.used, 0);
+              const totalStarted = debts.reduce((s, d) => s + d.limit, 0);
+              const paidOff = totalStarted - totalUsed;
+              const paidPct = totalStarted > 0 ? Math.round((paidOff / totalStarted) * 100) : 0;
+              return (
+                <div style={{ marginBottom: 18, padding: "14px 18px", background: "rgba(255,255,255,0.03)", borderRadius: 14, border: `1px solid ${C.border}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Overall Debt Freedom</span>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: totalUsed === 0 ? C.success : C.accent }}>{paidPct}%</span>
+                  </div>
+                  <ProgressBar value={paidOff} max={totalStarted} color={C.success} height={8} showLabel={false} />
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginTop: 6 }}>
+                    <span style={{ color: C.success, fontWeight: 600 }}>Available: \u00A3{(totalStarted - totalUsed).toLocaleString()}</span>
+                    <span style={{ color: C.danger, fontWeight: 600 }}>Owed: \u00A3{totalUsed.toLocaleString()}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Debt cards */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[...debts].sort((a, b) => b.used - a.used).map((debt) => {
+                const usedPct = debt.limit > 0 ? Math.round((debt.used / debt.limit) * 100) : 0;
+                const available = debt.limit - debt.used;
+                const severity = usedPct >= 90 ? C.danger : usedPct >= 70 ? C.orange : usedPct >= 40 ? C.accent : C.success;
                 return (
-                  <div key={goal.id} style={{
-                    padding: "14px 16px", borderRadius: 12,
-                    background: goal.doneToday ? "rgba(34,197,94,0.1)" : COLORS.cardAlt,
-                    border: goal.doneToday ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(255,255,255,0.04)",
+                  <div key={debt.id} style={{
+                    padding: "14px 16px", borderRadius: 14,
+                    background: debt.used === 0 ? "rgba(34,197,94,0.06)" : "rgba(255,255,255,0.03)",
+                    border: debt.used === 0 ? "1px solid rgba(34,197,94,0.15)" : `1px solid ${severity}18`,
                     transition: "all 0.2s",
                   }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                      {/* Today's checkbox */}
-                      <div
-                        onClick={() => toggleFitnessToday(goal.id)}
-                        style={{
-                          width: 26, height: 26, borderRadius: 8, flexShrink: 0,
-                          border: goal.doneToday ? "none" : "2px solid rgba(255,255,255,0.2)",
-                          background: goal.doneToday ? COLORS.success : "transparent",
-                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 14, color: "#fff", transition: "all 0.2s",
-                        }}
-                      >
-                        {goal.doneToday && "â"}
-                      </div>
-                      <span style={{ fontWeight: 700, fontSize: 16, flex: 1, color: goal.doneToday ? COLORS.success : COLORS.text }}>
-                        {goal.icon} {goal.name}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: debt.used === 0 ? C.success : C.text }}>
+                        {debt.icon} {debt.name}
                       </span>
                       <span style={{
-                        fontSize: 11, color: goal.doneToday ? COLORS.success : COLORS.muted,
-                        fontWeight: 600, textTransform: "uppercase", letterSpacing: 1,
+                        fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em",
+                        color: debt.used === 0 ? C.success : severity,
+                        padding: "2px 8px", borderRadius: 6,
+                        background: debt.used === 0 ? "rgba(34,197,94,0.12)" : `${severity}12`,
                       }}>
-                        {goal.doneToday ? "Done today!" : "Today?"}
+                        {debt.used === 0 ? "Clear!" : usedPct >= 90 ? "Critical" : usedPct >= 70 ? "High" : usedPct >= 40 ? "Moderate" : "Low"}
                       </span>
                     </div>
-                    {/* Progress towards overall goal */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <div style={{ flex: 1 }}>
-                        <ProgressBar value={goal.current} max={goal.goal} color={goal.doneToday ? COLORS.success : COLORS.accent} height={8} showLabel={false} />
+                        <ProgressBar value={debt.used} max={debt.limit} color={severity} height={6} showLabel={false} />
                       </div>
-                      <span style={{ fontSize: 12, color: COLORS.muted, minWidth: 90, textAlign: "right" }}>
-                        {editingGoal === goal.id ? (
-                          <input
-                            type="number"
-                            defaultValue={goal.current}
-                            onBlur={(e) => { updateGoalCurrent(goal.id, e.target.value); setEditingGoal(null); }}
-                            onKeyDown={(e) => { if (e.key === "Enter") { updateGoalCurrent(goal.id, e.target.value); setEditingGoal(null); } }}
+                      <span style={{ fontSize: 12, color: C.muted, minWidth: 150, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                        \u00A3{editingDebt === debt.id ? (
+                          <input type="number" value={tempDebtVal}
+                            onChange={(e) => setTempDebtVal(e.target.value)}
+                            onBlur={() => { setDebts((p) => p.map((d) => d.id === debt.id? { ...d, used: Math.max(0, Number(tempDebtVal) || 0) } : d)); setEditingDebt(null); }}
+                            onKeyDown={(e) => { if (e.key === "Enter") { setDebts((p) => p.map((d) => d.id === debt.id? { ...d, used: Math.max(0, Number(tempDebtVal) || 0) } : d)); setEditingDebt(null); } }}
                             autoFocus
-                            style={{
-                              width: 45, background: COLORS.cardAlt, border: `1px solid ${COLORS.accent}`,
-                              borderRadius: 6, color: COLORS.text, fontSize: 12, textAlign: "center", padding: "2px",
-                            }}
+                            style={{ width: 60, background: "rgba(255,255,255,0.05)", border: `1px solid ${severity}`, borderRadius: 6, color: C.text, fontSize: 12, textAlign: "center", padding: "2px", outline: "none" }}
                           />
                         ) : (
-                          <span
-                            onClick={() => setEditingGoal(goal.id)}
-                            style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.3)" }}
-                            title="Click to update"
-                          >
-                            {goal.current}
+                          <span onClick={() => { setEditingDebt(debt.id); setTempDebtVal(String(debt.used)); }}
+                            style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.25)", fontWeight: 700, color: severity }}
+                            title="Click to update">
+                            {debt.used.toLocaleString()}
                           </span>
-                        )} / {goal.goal} {goal.unit}
+                        )} / \u00A3{debt.limit.toLocaleString()}
                       </span>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: COLORS.muted, marginTop: 4 }}>
-                      <span>Started: {goal.start} {goal.unit}</span>
-                      <span>{pct}% to goal</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.muted, marginTop: 4 }}>
+                      <span>{usedPct}% used</span>
+                      <span style={{ color: C.success }}>\u00A3{available.toLocaleString()} available</span>
                     </div>
                   </div>
                 );
               })}
             </div>
-            {/* Daily summary */}
-            <div style={{
-              marginTop: 14, padding: "10px 14px",
-              background: fitnessGoals.some((g) => g.doneToday) ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.03)",
-              borderRadius: 10, border: fitnessGoals.some((g) => g.doneToday) ? "1px solid rgba(34,197,94,0.2)" : "1px solid rgba(255,255,255,0.06)",
-              textAlign: "center",
-            }}>
-              {fitnessGoals.some((g) => g.doneToday) ? (
-                <span style={{ fontSize: 14, color: COLORS.success, fontWeight: 600 }}>
-                  ð¥ {fitnessGoals.filter((g) => g.doneToday).map((g) => g.name).join(" + ")} done today!
-                </span>
-              ) : (
-                <span style={{ fontSize: 14, color: COLORS.muted }}>
-                  Pick an activity for today âï¸
-                </span>
-              )}
-            </div>
-          </Card>
-        </div>
 
-        )}
-
-        {/* âââ ROW 2: Add task bar + Task Lists (All + Tasks) âââ */}
-        {(activeTab === "all" || activeTab === "tasks") && (<>
-        <Card style={{ marginBottom: 24 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <select
-              value={newTaskCat}
-              onChange={(e) => setNewTaskCat(e.target.value)}
-              style={{
-                background: COLORS.cardAlt, color: COLORS.text, border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 8, padding: "10px 14px", fontSize: 14, cursor: "pointer",
-              }}
-            >
-              {["work", "diet", "family", "personal"].map((c) => (
-                <option key={c} value={c}>{catEmoji[c]} {catLabel[c]}</option>
-              ))}
-            </select>
-            <input
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addTask()}
-              placeholder="Add a new task..."
-              style={{
-                flex: 1, minWidth: 200, background: COLORS.cardAlt, color: COLORS.text,
-                border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8,
-                padding: "10px 14px", fontSize: 14,
-              }}
-            />
-            <button
-              onClick={addTask}
-              style={{
-                background: `linear-gradient(135deg, ${COLORS.accent}, #818CF8)`,
-                color: "#fff", border: "none", borderRadius: 8,
-                padding: "10px 24px", fontSize: 14, fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              + Add
-            </button>
-          </div>
-        </Card>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 24 }}>
-          {["work", "diet", "family", "personal"].map((cat) => {
-            const catTasks = [...tasks.filter((t) => t.category === cat)].sort((a, b) => a.done === b.done ? 0 : a.done ? 1 : -1);
-            return (
-              <Card key={cat} style={{ borderTop: `3px solid ${COLORS[cat] || COLORS.accent}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                  <SectionTitle emoji={catEmoji[cat]}>{catLabel[cat]} Tasks</SectionTitle>
-                  <span style={{
-                    background: COLORS.cardAlt, borderRadius: 20,
-                    padding: "4px 12px", fontSize: 12, color: COLORS.muted,
-                  }}>
-                    {taskStats[cat]?.done}/{taskStats[cat]?.total}
-                  </span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {catTasks.length === 0 && (
-                    <div style={{ color: COLORS.muted, fontSize: 13, fontStyle: "italic", textAlign: "center", padding: 16 }}>
-                      No tasks yet â add one above!
-                    </div>
-                  )}
-                  {catTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 10,
-                        padding: "10px 12px", borderRadius: 10,
-                        background: task.done ? "rgba(34,197,94,0.08)" : COLORS.cardAlt,
-                        border: task.done ? "1px solid rgba(34,197,94,0.15)" : "1px solid rgba(255,255,255,0.04)",
-                        transition: "all 0.2s",
-                      }}
-                    >
-                      <div
-                        onClick={() => toggleTask(task.id)}
-                        style={{
-                          width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                          border: task.done ? "none" : "2px solid rgba(255,255,255,0.2)",
-                          background: task.done ? COLORS.success : "transparent",
-                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 13, color: "#fff", transition: "all 0.2s",
-                        }}
-                      >
-                        {task.done && "â"}
-                      </div>
-                      <span style={{
-                        flex: 1, fontSize: 14,
-                        textDecoration: task.done ? "line-through" : "none",
-                        color: task.done ? COLORS.muted : COLORS.text,
-                      }}>
-                        {task.text}
-                      </span>
-                      <button
-                        onClick={() => deleteTask(task.id)}
-                        style={{
-                          background: "none", border: "none", color: "rgba(255,255,255,0.2)",
-                          cursor: "pointer", fontSize: 16, padding: "0 4px",
-                          transition: "color 0.2s",
-                        }}
-                        onMouseEnter={(e) => e.target.style.color = COLORS.danger}
-                        onMouseLeave={(e) => e.target.style.color = "rgba(255,255,255,0.2)"}
-                        title="Delete task"
-                      >
-                        Ã
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* âââ ROW 3: Radar + Pie Chart + Stats (All + Tasks) âââ */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 24, marginBottom: 24 }}>
-          {/* Attention Radar */}
-          <Card>
-            <SectionTitle emoji="ð§­">Focus Radar</SectionTitle>
-            <p style={{ fontSize: 12, color: COLORS.muted, margin: "0 0 12px 0" }}>
-              Higher = more attention needed (more incomplete tasks)
-            </p>
+            {/* Summary */}
             {(() => {
-              const radarData = ["work", "diet", "family", "personal"].map((cat) => {
-                const s = taskStats[cat] || { total: 0, done: 0 };
-                const incomplete = s.total - s.done;
-                return {
-                  category: catLabel[cat],
-                  attention: incomplete,
-                  fullMark: Math.max(taskStats.all?.total || 1, 1),
-                };
-              });
-              // Find highest attention area
-              const maxAttention = radarData.reduce((a, b) => a.attention > b.attention ? a : b, radarData[0]);
-              return (
-                <>
-                  <div style={{ height: 250 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                        <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                        <PolarAngleAxis
-                          dataKey="category"
-                          tick={{ fill: COLORS.text, fontSize: 12, fontWeight: 600 }}
-                        />
-                        <PolarRadiusAxis
-                          angle={90}
-                          domain={[0, "auto"]}
-                          tick={{ fill: COLORS.muted, fontSize: 10 }}
-                          axisLine={false}
-                        />
-                        <Radar
-                          name="Attention Needed"
-                          dataKey="attention"
-                          stroke={COLORS.accent}
-                          fill={COLORS.accent}
-                          fillOpacity={0.25}
-                          strokeWidth={2}
-                        />
-                        <Tooltip
-                          contentStyle={{ background: COLORS.card, border: "none", borderRadius: 8, color: COLORS.text }}
-                          formatter={(value) => [`${value} incomplete tasks`, "Attention"]}
-                        />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div style={{
-                    marginTop: 8, padding: "10px 14px", background: "rgba(56,189,248,0.1)",
-                    borderRadius: 10, border: "1px solid rgba(56,189,248,0.2)", textAlign: "center",
-                  }}>
-                    <span style={{ fontSize: 13, color: COLORS.muted }}>Top priority: </span>
-                    <span style={{ fontSize: 16, fontWeight: 800, color: COLORS.accent }}>{maxAttention.category}</span>
-                    <span style={{ fontSize: 13, color: COLORS.muted }}> ({maxAttention.attention} tasks remaining)</span>
-                  </div>
-                </>
-              );
-            })()}
-          </Card>
-
-          {/* Pie Chart with Percentages */}
-          <Card>
-            <SectionTitle emoji="ð">Task Distribution</SectionTitle>
-            <div style={{ height: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={4}
-                    dataKey="value"
-                    stroke="none"
-                    label={({ name, pct, cx, cy, midAngle, outerRadius: or }) => {
-                      const RADIAN = Math.PI / 180;
-                      const radius = or + 25;
-                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                      return (
-                        <text x={x} y={y} fill={COLORS.text} textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={13} fontWeight={600}>
-                          {name} {pct}%
-                        </text>
-                      );
-                    }}
-                  >
-                    {pieData.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: COLORS.card, border: "none", borderRadius: 8, color: COLORS.text }}
-                    formatter={(value, name) => {
-                      const entry = pieData.find((d) => d.name === name);
-                      return [`${value} tasks (${entry?.pct || 0}%)`, name];
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-
-          {/* Category Stats */}
-          <Card>
-            <SectionTitle emoji="ð">Completion Stats</SectionTitle>
-            <div style={{
-              display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16,
-            }}>
-              {["work", "diet", "family", "personal"].map((cat) => (
-                <div key={cat} style={{
-                  background: COLORS.cardAlt, borderRadius: 12, padding: 16, textAlign: "center",
-                  border: `2px solid ${COLORS[cat] || COLORS.accent}22`,
-                }}>
-                  <div style={{ fontSize: 24 }}>{catEmoji[cat]}</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, marginTop: 4 }}>{catLabel[cat]}</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: COLORS[cat] || COLORS.accent, marginTop: 4 }}>
-                    {taskStats[cat]?.pct || 0}%
-                  </div>
-                  <div style={{ fontSize: 11, color: COLORS.muted }}>
-                    {taskStats[cat]?.done || 0} / {taskStats[cat]?.total || 0} done
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{
-              padding: "12px 16px", background: "rgba(56,189,248,0.1)",
-              borderRadius: 10, border: "1px solid rgba(56,189,248,0.2)", textAlign: "center",
-            }}>
-              <span style={{ fontSize: 14, color: COLORS.muted }}>Overall: </span>
-              <span style={{ fontSize: 24, fontWeight: 800, color: COLORS.accent }}>{taskStats.all?.pct || 0}%</span>
-              <span style={{ fontSize: 14, color: COLORS.muted }}> complete ({taskStats.all?.done}/{taskStats.all?.total} tasks)</span>
-            </div>
-          </Card>
-        </div>
-        </>)}
-
-        {/* âââ FINANCES: Debt Tracker (All + Money) âââ */}
-        {(activeTab === "all" || activeTab === "money") && (
-        <Card style={{ marginTop: 24 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-            <SectionTitle emoji="ð°">Finances â Debt Tracker</SectionTitle>
-            {(() => {
+              const cleared = debts.filter((d) => d.used === 0).length;
               const totalUsed = debts.reduce((s, d) => s + d.used, 0);
-              const totalLimit = debts.reduce((s, d) => s + d.limit, 0);
               return (
-                <span style={{ fontSize: 13, color: COLORS.muted }}>
-                  Total: <span style={{ fontWeight: 800, color: totalUsed > 0 ? COLORS.danger : COLORS.success }}>Â£{totalUsed.toLocaleString()}</span>
-                  <span style={{ color: COLORS.muted }}> / Â£{totalLimit.toLocaleString()}</span>
-                </span>
+                <div style={{
+                  marginTop: 12, padding: "10px 14px",
+                  background: cleared === debts.length ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.05)",
+                  borderRadius: 12, border: cleared === debts.length ? "1px solid rgba(34,197,94,0.15)" : "1px solid rgba(239,68,68,0.08)",
+                  textAlign: "center",
+                }}>
+                  {cleared === debts.length ? (
+                    <span style={{ fontSize: 13, color: C.success, fontWeight: 800 }}>\u{1F389} DEBT FREE! All cards cleared!</span>
+                  ) : (
+                    <span style={{ fontSize: 12, color: C.muted }}>
+                      {cleared > 0 && <span style={{ color: C.success, fontWeight: 700 }}>{cleared} card{cleared > 1 ? "s" : ""} clear! </span>}
+                      <span style={{ fontWeight: 800, color: C.danger }}>\u00A3{totalUsed.toLocaleString()}</span> total across {debts.length - cleared} card{debts.length - cleared !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
               );
             })()}
-          </div>
-          <p style={{ fontSize: 12, color: COLORS.muted, margin: "-8px 0 16px 0" }}>
-            Click any balance to update it â goal is Â£0 across the board
-          </p>
-
-          {/* Overall debt progress */}
-          {(() => {
-            const totalUsed = debts.reduce((s, d) => s + d.used, 0);
-            const totalStarted = debts.reduce((s, d) => s + d.limit, 0);
-            const paidOff = totalStarted - totalUsed;
-            const paidPct = totalStarted > 0 ? Math.round((paidOff / totalStarted) * 100) : 0;
-            return (
-              <div style={{ marginBottom: 20, padding: "14px 18px", background: COLORS.cardAlt, borderRadius: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>Overall Debt Freedom</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: totalUsed === 0 ? COLORS.success : COLORS.accent }}>{paidPct}%</span>
-                </div>
-                <ProgressBar value={paidOff} max={totalStarted} color={COLORS.success} height={10} showLabel={false} />
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 6 }}>
-                  <span style={{ color: COLORS.success }}>Available: Â£{(totalStarted - totalUsed).toLocaleString()}</span>
-                  <span style={{ color: COLORS.danger }}>Owed: Â£{totalUsed.toLocaleString()}</span>
-                </div>
-              </div>
-            );
-          })()}
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {[...debts].sort((a, b) => b.used - a.used).map((debt) => {
-              const usedPct = debt.limit > 0 ? Math.round((debt.used / debt.limit) * 100) : 0;
-              const available = debt.limit - debt.used;
-              const severity = usedPct >= 90 ? COLORS.danger : usedPct >= 70 ? "#F97316" : usedPct >= 40 ? COLORS.accent : COLORS.success;
-              return (
-                <div key={debt.id} style={{
-                  padding: "14px 16px", borderRadius: 12,
-                  background: debt.used === 0 ? "rgba(34,197,94,0.08)" : COLORS.cardAlt,
-                  border: debt.used === 0 ? "1px solid rgba(34,197,94,0.2)" : `1px solid ${severity}22`,
-                  transition: "all 0.2s",
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontWeight: 700, fontSize: 15, color: debt.used === 0 ? COLORS.success : COLORS.text }}>
-                      {debt.icon} {debt.name}
-                    </span>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1,
-                      color: debt.used === 0 ? COLORS.success : severity,
-                    }}>
-                      {debt.used === 0 ? "Clear!" : usedPct >= 90 ? "Critical" : usedPct >= 70 ? "High" : usedPct >= 40 ? "Moderate" : "Low"}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <ProgressBar value={debt.used} max={debt.limit} color={severity} height={8} showLabel={false} />
-                    </div>
-                    <span style={{ fontSize: 13, color: COLORS.muted, minWidth: 160, textAlign: "right" }}>
-                      Â£{editingDebt === debt.id ? (
-                        <input
-                          type="number"
-                          value={tempDebtVal}
-                          onChange={(e) => setTempDebtVal(e.target.value)}
-                          onBlur={() => { setDebts((prev) => prev.map((d) => d.id === debt.id ? { ...d, used: Math.max(0, Number(tempDebtVal) || 0) } : d)); setEditingDebt(null); }}
-                          onKeyDown={(e) => { if (e.key === "Enter") { setDebts((prev) => prev.map((d) => d.id === debt.id ? { ...d, used: Math.max(0, Number(tempDebtVal) || 0) } : d)); setEditingDebt(null); } }}
-                          autoFocus
-                          style={{ width: 60, background: COLORS.card, border: `1px solid ${severity}`, borderRadius: 6, color: COLORS.text, fontSize: 13, textAlign: "center", padding: "2px" }}
-                        />
-                      ) : (
-                        <span
-                          onClick={() => { setEditingDebt(debt.id); setTempDebtVal(String(debt.used)); }}
-                          style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.3)", fontWeight: 700, color: severity }}
-                          title="Click to update balance"
-                        >
-                          {debt.used.toLocaleString()}
-                        </span>
-                      )} / Â£{debt.limit.toLocaleString()}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: COLORS.muted, marginTop: 4 }}>
-                    <span>{usedPct}% used</span>
-                    <span style={{ color: COLORS.success }}>Â£{available.toLocaleString()} available</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Debt summary */}
-          {(() => {
-            const cleared = debts.filter((d) => d.used === 0).length;
-            const totalUsed = debts.reduce((s, d) => s + d.used, 0);
-            return (
-              <div style={{
-                marginTop: 14, padding: "10px 14px",
-                background: cleared === debts.length ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.06)",
-                borderRadius: 10, border: cleared === debts.length ? "1px solid rgba(34,197,94,0.2)" : "1px solid rgba(239,68,68,0.1)",
-                textAlign: "center",
-              }}>
-                {cleared === debts.length ? (
-                  <span style={{ fontSize: 14, color: COLORS.success, fontWeight: 700 }}>ð DEBT FREE! All cards cleared!</span>
-                ) : (
-                  <span style={{ fontSize: 14, color: COLORS.muted }}>
-                    {cleared > 0 && <span style={{ color: COLORS.success, fontWeight: 600 }}>{cleared} card{cleared > 1 ? "s" : ""} clear! </span>}
-                    <span style={{ fontWeight: 700, color: COLORS.danger }}>Â£{totalUsed.toLocaleString()}</span> total to pay off across {debts.length - cleared} card{debts.length - cleared !== 1 ? "s" : ""}
-                  </span>
-                )}
-              </div>
-            );
-          })()}
-        </Card>
+          </Card>
         )}
 
-        {/* Serenity Prayer */}
-        {(activeTab === "all") && (
+        {/* âââ SERENITY PRAYER âââ */}
+        {activeTab === "all" && (
           <div style={{
-            marginTop: 40, padding: "28px 32px", textAlign: "center",
-            background: "linear-gradient(135deg, rgba(56,189,248,0.06), rgba(129,140,248,0.06), rgba(192,132,252,0.06))",
-            borderRadius: 16, border: "1px solid rgba(255,255,255,0.06)",
+            marginTop: 16, padding: "32px 36px", textAlign: "center",
+            background: "linear-gradient(135deg, rgba(56,189,248,0.04), rgba(129,140,248,0.04), rgba(192,132,252,0.04))",
+            borderRadius: 20, border: `1px solid ${C.border}`,
+            backdropFilter: "blur(16px)",
           }}>
-            <div style={{ fontSize: 13, color: COLORS.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 16, fontWeight: 600 }}>
+            <div style={{ fontSize: 11, color: C.accent, textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: 16, fontWeight: 700 }}>
               The Serenity Prayer
             </div>
-            <div style={{ fontSize: 18, color: COLORS.text, lineHeight: 1.8, fontStyle: "italic", maxWidth: 500, margin: "0 auto" }}>
-              God, grant me the serenity
-              <br />to accept the things I cannot change,
-              <br />the courage to change the things I can,
-              <br />and the wisdom to know the difference.
+            <div style={{ fontSize: 17, color: C.mutedLight, lineHeight: 2, fontStyle: "italic", maxWidth: 460, margin: "0 auto", fontWeight: 400 }}>
+              God, grant me the serenity<br />
+              to accept the things I cannot change,<br />
+              the courage to change the things I can,<br />
+              and the wisdom to know the difference.
             </div>
           </div>
         )}
 
         {/* Footer */}
-        <div style={{ textAlign: "center", marginTop: 24, color: COLORS.muted, fontSize: 12 }}>
-          Last updated: {new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-          <br />Click on weight or health goal numbers to update them
-        </div>
+        <footer style={{ textAlign: "center", marginTop: 28, paddingBottom: 20, color: C.muted, fontSize: 11 }}>
+          {new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+          <span style={{ margin: "0 8px", opacity: 0.3 }}>\u00B7</span>
+          Click numbers to update them
+        </footer>
+
       </div>
     </div>
   );
