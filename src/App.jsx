@@ -1,4 +1,4 @@
-Ximport { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import { fetchAllData, isConfigured, SHEET_ID } from "./sheets.js";
 
@@ -528,7 +528,7 @@ export default function LifeDashboard() {
             border: "1px solid rgba(139,92,246,0.15)", boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
           }}>
             <div style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Muscle</div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: "#8B5CF6" }}>{muditingSummary === "muscle" ? (
+            <div style={{ fontSize: 30, fontWeight: 800, color: "#8B5CF6" }}>{editingSummary === "muscle" ? (
                 <input
                   type="number"
                   value={tempSummaryVal}
