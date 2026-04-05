@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
-import { fetchAllData, isConfigured, SHEET_ID } from "./sheets.js";
+import { fetchAllData, isConfigured } from "./sheets.js";
 
 // âââ colour palette âââ
 const C = {
@@ -11,7 +11,6 @@ const C = {
   bg: "#0B1120",
   card: "rgba(15,23,42,0.7)",
   cardSolid: "#0F172A",
-  glass: "rgba(30,41,59,0.5)",
   accent: "#38BDF8",
   text: "#F1F5F9",
   muted: "#94A3B8",
@@ -19,13 +18,13 @@ const C = {
   success: "#22C55E",
   danger: "#EF4444",
   orange: "#F97316",
-  purple: "#A855F7",
   border: "rgba(255,255,255,0.07)",
   borderLight: "rgba(255,255,255,0.12)",
   glow: "0 0 40px rgba(56,189,248,0.08)",
 };
 
 const PIE_COLORS = [C.work, C.diet, C.family, C.personal];
+const CATEGORIES = ["work", "diet", "family", "personal"];
 
 // âââ global styles injected once âââ
 const GLOBAL_CSS = `
@@ -124,7 +123,7 @@ function ProgressBar({ value, max, color, height = 10, showLabel = true, animate
   );
 }
 
-function Card({ children, style, hover = true, glow = false }) {
+function Card({ children, style, glow = false }) {
   return (
     <div style={{
       background: C.card,
@@ -217,7 +216,7 @@ function StatBox({ label, value, sub, color, borderColor, bg, icon }) {
                   background: "rgba(255,255,255,0.05)", color: C.text, border: `1px solid ${C.border}`,
                   borderRadius: 10, padding: "10px 14px", fontSize: 13, cursor: "pointer", outline: "none",
                 }}>
-                  {["work", "diet", "family", "personal"].map((c) => (
+                  {CATEGORIES.map((c) => (
                     <option key={c} value={c}>{catEmoji[c]} {catLabel[c]}</option>
                   ))}
                 </select>
@@ -245,7 +244,7 @@ function StatBox({ label, value, sub, color, borderColor, bg, icon }) {
 
             {/* Task lists */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 24 }}>
-              {["work", "diet", "family", "personal"].map((cat) => {
+              {CATEGORIES.map((cat) => {
                 const catTasks = [...tasks.filter((t) => t.category === cat)].sort((a, b) => a.done === b.done ? 0 : a.done ? 1 : -1);
                 return (
                   <Card key={cat} style={{ borderTop: `3px solid ${C[cat] || C.accent}`, padding: "20px 22px" }}>
@@ -314,7 +313,7 @@ function StatBox({ label, value, sub, color, borderColor, bg, icon }) {
               <Card>
                 <SectionTitle emoji="\u{1F9ED}" sub="Higher = more attention needed">Focus Radar</SectionTitle>
                 {(() => {
-                  const radarData = ["work", "diet", "family", "personal"].map((cat) => {
+                  const radarData = CATEGORIES.map((cat) => {
                     const s = taskStats[cat] || { total: 0, done: 0 };
                     return { category: catLabel[cat], attention: s.total - s.done, fullMark: Math.max(taskStats.all?.total || 1, 1) };
                   });
@@ -368,7 +367,7 @@ function StatBox({ label, value, sub, color, borderColor, bg, icon }) {
               <Card>
                 <SectionTitle emoji="\u{1F4C8}">Completion Stats</SectionTitle>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                  {["work", "diet", "family", "personal"].map((cat) => (
+                  {CATEGORIES.map((cat) => (
                     <div key={cat} style={{
                       background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 12px", textAlign: "center",
                       border: `2px solid ${C[cat]}20`, transition: "border-color 0.2s",
