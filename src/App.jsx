@@ -710,7 +710,7 @@ export default function LifeDashboard() {
 
         {/* âââ TASKS SECTION âââ */}
         {(activeTab === "all" || activeTab === "tasks") && (
-           <>
+          <>
             {/* Add task bar */}
             <Card style={{ marginBottom: 20, padding: "16px 20px" }}>
               <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -993,57 +993,6 @@ export default function LifeDashboard() {
               const totalUsed = debts.reduce((s, d) => s + d.used, 0);
               return (
                 <div style={{
-                  marginTop: 12, padding: "10px 14px",
-                  background: cleared === debts.length ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.05)",
-                  borderRadius: 12, border: cleared === debts.length ? "1px solid rgba(34,197,94,0.15)" : "1px solid rgba(239,68,68,0.08)",
-                  textAlign: "center",
-                }}>
-                  {cleared === debts.length ? (
-                    <span style={{ fontSize: 13, color: C.success, fontWeight: 800 }}>\u{1F389} DEBT FREE! All cards cleared!</span>
-                  ) : (
-                    <span style={{ fontSize: 12, color: C.muted }}>
-                      {cleared > 0 && <span style={{ color: C.success, fontWeight: 700 }}>{cleared} card{cleared > 1 ? "s" : ""} clear! </span>}
-                      <span style={{ fontWeight: 800, color: C.danger }}>\u00A3{totalUsed.toLocaleString()}</span> total across {debts.length - cleared} card{debts.length - cleared !== 1 ? "s" : ""}
-                    </span>
-                  )}
-                </div>
-              );
-            })()}
-          </Card>
-        )}
-
-        {/* âââ SERENITY PRAYER âââ */}
-        {activeTab === "all" && (
-          <div style={{
-            marginTop: 16, padding: "32px 36px", textAlign: "center",
-            background: "linear-gradient(135deg, rgba(56,189,248,0.04), rgba(129,140,248,0.04), rgba(192,132,252,0.04))",
-            borderRadius: 20, border: `1px solid ${C.border}`,
-            backdropFilter: "blur(16px)",
-          }}>
-            <div style={{ fontSize: 11, color: C.accent, textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: 16, fontWeight: 700 }}>
-              The Serenity Prayer
-            </div>
-            <div style={{ fontSize: 17, color: C.mutedLight, lineHeight: 2, fontStyle: "italic", maxWidth: 460, margin: "0 auto", fontWeight: 400 }}>
-              God, grant me the serenity<br />
-              to accept the things I cannot change,<br />
-              the courage to change the things I can,<br />
-              and the wisdom to know the difference.
-            </div>
-          </div>
-        )}
-
-        {/* Footer */}
-        <footer style={{ textAlign: "center", marginTop: 28, paddingBottom: 20, color: C.muted, fontSize: 11 }}>
-          {new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-          <span style={{ margin: "0 8px", opacity: 0.3 }}>\u00B7</span>
-          Click numbers to update them
-        </footer>
-
-      </div>
-    </div>
-  );
-}
- <div style={{
                   marginTop: 12, padding: "10px 14px",
                   background: cleared === debts.length ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.05)",
                   borderRadius: 12, border: cleared === debts.length ? "1px solid rgba(34,197,94,0.15)" : "1px solid rgba(239,68,68,0.08)",
