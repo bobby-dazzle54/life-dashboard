@@ -537,7 +537,7 @@ export default function LifeDashboard() {
                 marginTop: 16, padding: "14px 16px", textAlign: "center",
                 background: "rgba(34,197,94,0.08)", borderRadius: 14, border: "1px solid rgba(34,197,94,0.15)",
               }}>
-                <span style={{ fontSize: 30, fontWeight: 900, color: C.success }}>{weightPct}%</span>{" "}
+                <span style={{ fontSize: 30, fontWeight: 900, color: C.success }}>{weightPct}% </span>
                 <span style={{ fontSize: 13, color: C.muted }}>of the way there!</span>
               </div>
 
@@ -575,7 +575,7 @@ export default function LifeDashboard() {
                         <span style={{ color: C.muted }}>To go: {bodyFat.current - (bodyFat.goal || 15)}%</span>
                       </div>
                       <div style={{ marginTop: 10, padding: "8px 12px", background: "rgba(249,115,22,0.08)", borderRadius: 10, border: "1px solid rgba(249,115,22,0.15)", textAlign: "center" }}>
-                        <span style={{ fontSize: 22, fontWeight: 900, color: C.orange }}>{pct}%</span>{" "}
+                        <span style={{ fontSize: 22, fontWeight: 900, color: C.orange }}>{pct}% </span>
                         <span style={{ fontSize: 12, color: C.muted }}>of fat loss goal</span>
                       </div>
                     </>
@@ -618,7 +618,7 @@ export default function LifeDashboard() {
                         <span style={{ color: C.muted }}>To go: {fatMass.current - fatMass.goal} lbs</span>
                       </div>
                       <div style={{ marginTop: 10, padding: "8px 12px", background: "rgba(239,68,68,0.08)", borderRadius: 10, border: "1px solid rgba(239,68,68,0.15)", textAlign: "center" }}>
-                        <span style={{ fontSize: 22, fontWeight: 900, color: C.danger }}>{pct}%</span>{" "}
+                        <span style={{ fontSize: 22, fontWeight: 900, color: C.danger }}>{pct}% </span>
                         <span style={{ fontSize: 12, color: C.muted }}>of fat burned</span>
                       </div>
                     </>
